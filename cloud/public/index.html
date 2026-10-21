@@ -606,10 +606,8 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
     <h2>Save, reset &amp; share the layout</h2>
     <div class="pad">
       <div class="facts">
-        <div><button class="sm" id="layLoadDef">Reset room to my default</button><span>Undo edits in the selected room back to your last Save.</span></div>
-        <div><button class="sm" id="layReset">Reset room to drawing values</button><span>Go back to the original drawing values for the selected room.</span></div>
-        <div><button class="sm" id="parReset">Reset parameters to factory values</button><span>Put every value in the Parameters tab back to the built-in numbers.</span></div>
-        <div><button class="sm" id="layDownload"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14"/></svg>Download HTML</button><span>A copy of this simulator with your layout and parameters built in — opens the same on any computer.</span></div>
+        <div><button class="sm" id="layLoadDef">Reset to default</button><span>Undo all edits (both rooms and parameters) back to the last Save.</span></div>
+        <div><button class="sm" id="layDownload"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14"/></svg>Save as HTML</button><span>A copy of this simulator with your layout and parameters built in — opens the same on any computer.</span></div>
         <div><span class="row" style="gap:6px"><button class="sm" id="layExport">Export JSON</button><button class="sm" id="layImport">Import JSON</button></span><span>Copy the layout and parameters as text, or paste one in and press Import again.</span></div>
       </div>
       <p class="note" id="defNote"></p>
@@ -1845,7 +1843,7 @@ function initDefNote(){
   let saved = null, at = null;
   try { saved = localStorage.getItem(USER_DEF_KEY); at = localStorage.getItem('fcsim.savedAt'); } catch(e) {}
   $('#defNote').textContent = saved
-    ? `Saved layout (both rooms) + parameters${at ? ' · ' + new Date(+at).toLocaleString() : ''} (this browser). Use Download HTML to keep them inside the file.`
+    ? `Saved layout (both rooms) + parameters${at ? ' · ' + new Date(+at).toLocaleString() : ''} (this browser). Use Save as HTML to keep them inside the file.`
     : 'Nothing saved in this browser yet: the layout and parameters built into this file are used. Press Save to keep your changes here.';
 }
 const paramsObj = () => { const par = {}; for (const [k] of PARAM_UI) if (k!=='h') par[k] = P[k]; return par; };
@@ -1853,21 +1851,20 @@ function saveAll(){
   try {
     localStorage.setItem(USER_DEF_KEY, JSON.stringify(LAYOUT)); localStorage.setItem(PARAM_KEY, JSON.stringify(paramsObj())); localStorage.setItem('fcsim.savedAt', String(Date.now()));
     DEFAULT_CHAIN = JSON.parse(JSON.stringify(LAYOUT)); setDirty(false);
-    $('#defNote').textContent = `Saved layout (both rooms) + parameters · ${new Date().toLocaleTimeString()} (this browser). Use Download HTML to keep them inside the file.`;
+    $('#defNote').textContent = `Saved layout (both rooms) + parameters · ${new Date().toLocaleTimeString()} (this browser). Use Save as HTML to keep them inside the file.`;
     toast('Saved: layout (both rooms) and parameters', 'ok');
     if (window.cloudSave) window.cloudSave();
-  } catch(e){ defNote('Could not save in this browser. Use Download HTML instead.', 'err'); }
+  } catch(e){ defNote('Could not save in this browser. Use Save as HTML instead.', 'err'); }
 }
 $('#laySaveDef').addEventListener('click', saveAll);
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); saveAll(); } });
 $('#layLoadDef').addEventListener('click', () => { const d = readUserDefault();
-  LAYOUT[room] = JSON.parse(JSON.stringify((d || FACTORY_CHAIN)[room])); layoutChanged(); defNote(d ? 'Room reset to your saved default.' : 'No saved default yet — drawing values loaded.'); });
-$('#layReset').addEventListener('click', () => { LAYOUT[room] = JSON.parse(JSON.stringify(FACTORY_CHAIN[room])); layoutChanged(); defNote('Room reset to drawing values.'); });
-$('#parReset').addEventListener('click', () => {
+  LAYOUT = normLayout(JSON.parse(JSON.stringify(d || FACTORY_CHAIN)));
   for (const [k] of PARAM_UI) if (k!=='h') P[k] = FACTORY_P[k];
+  try { applyParams(JSON.parse(localStorage.getItem(PARAM_KEY) || 'null')); } catch(e) {}
   document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; });
-  paramsChanged(); defNote('Parameters reset to factory values. Press Save to keep them.');
-});
+  layoutChanged(); paramsChanged(); setDirty(false);
+  defNote(d ? 'Reset to the saved default (both rooms + parameters).' : 'No saved default yet — drawing and factory values loaded.'); });
 $('#layDownload').addEventListener('click', () => {
   const scripts = [...document.scripts].map(sc => sc.textContent);
   const src = scripts.find(t => t.includes('@@BAKED_DEFAULT@@'));
