@@ -323,6 +323,18 @@ kbd{display:inline-block;min-width:22px;text-align:center;font:600 11.5px/1.5 va
 .facts{display:grid;gap:8px}
 .facts>div{display:grid;grid-template-columns:260px minmax(0,1fr);gap:12px;align-items:center;font-size:12.5px;color:var(--muted)}
 .facts>div>button,.facts>div>.row{justify-self:start}
+/* local ≠ cloud: header warning + the choice box in Save & files */
+button.syncw{color:var(--soft);border-color:var(--soft);animation:syncPulse 1.2s ease-in-out infinite}
+button.syncw[hidden]{display:none}
+@keyframes syncPulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--soft) 60%, transparent)}50%{box-shadow:0 0 0 6px transparent}}
+@media (prefers-reduced-motion: reduce){button.syncw{animation:none}}
+.sync{margin:0 0 16px;padding:10px 12px;border:1px solid var(--soft);border-radius:6px;background:color-mix(in srgb, var(--soft) 8%, transparent)}
+.sync[hidden]{display:none}
+.sync h3{margin:0 0 8px;font:600 13px var(--sans);color:var(--soft)}
+.sync .opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.sync .opts>div{display:grid;gap:4px;justify-items:start;padding:8px 10px;border:1px solid var(--line2);border-radius:6px;background:var(--panel);font-size:12.5px}
+.sync .opts span{font:500 12px var(--mono);color:var(--muted)}
+@media (max-width:600px){.sync .opts{grid-template-columns:minmax(0,1fr)}}
 /* cloud saves: the last few Saves, newest first — Load brings one back as unsaved edits */
 .chist{margin-top:16px}
 .chist h3{margin:0 0 6px;font:600 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
@@ -434,6 +446,7 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
       <button data-r="base" role="radio" aria-checked="false" tabindex="-1"><i></i>Base paint room</button><button data-r="top" role="radio" aria-checked="true" class="sel"><i></i>Top paint room</button>
     </div>
     <div class="tools">
+      <button class="icon syncw" id="syncBtn" hidden="" title="This browser and the cloud have different data — choose which to keep (Settings › Save &amp; files)" aria-label="Local and cloud data differ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20z"></path><path d="M12 10v4M12 17.5v.01"></path></svg><span>Data differ</span></button>
       <button class="icon" id="mtBtn" title="Master table — every size with every calculated value + insights" aria-label="Master table"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 9.5h18M3 15h18M9 4v16"></path></svg><span>Master table</span></button>
       <button class="icon" id="keysBtn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"></rect><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M8 14h8"></path></svg></button>
       <button class="icon" id="themeBtn" title="Toggle light / dark" aria-label="Toggle light / dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"></path></svg></button>
@@ -649,6 +662,14 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
       <div class="facts">
         <div><span class="row" style="gap:6px"><button class="sm" id="layLoadDef">Reset to default</button><button class="sm" id="layUndoReset" hidden="">Undo reset</button></span><span>Undo all edits (both rooms and parameters) back to the last Save. Asks first; the edits it throws away are kept — Undo reset brings them back.</span></div>
         <div><span class="row" style="gap:6px"><button class="sm" id="layExport"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14"/></svg>Export JSON</button><button class="sm" id="layImport">Import JSON</button><input type="file" id="layFile" accept=".json,application/json" hidden=""></span><span>Download everything as a .json file — layout (both rooms), parameters, Mitsubishi / interlock switches and the HMI size — or pick one to load it back (as unsaved edits; Undo reset goes back).</span></div>
+      </div>
+      <div class="sync" id="syncBox" hidden="">
+        <h3>⚠ This browser and the cloud have different data — choose one</h3>
+        <div class="opts">
+          <div><b>Local · this browser</b><span id="syncLocalAt"></span><button class="sm" id="useLocal">Use local → save to cloud</button></div>
+          <div><b>Cloud default</b><span id="syncCloudAt"></span><button class="sm" id="useCloud">Use cloud</button></div>
+        </div>
+        <p class="note">Until you choose, the editor shows the local data. The one you don't pick is not lost: the old cloud default stays in Cloud saves below, and local data replaced by the cloud comes back with Undo reset.</p>
       </div>
       <div class="chist" id="cloudHist" hidden="">
         <h3>Cloud saves · last 5 <button class="sm" id="histRefresh" title="Reload the list">↻</button></h3>
@@ -876,6 +897,9 @@ const applyParams = o => { if (o) for (const k in o) if (k in P && typeof o[k]==
 let BAKED_PARAMS = {"vBaseMM":105,"vHighMM":1240,"slowRes":0.3125,"highRes":0.265,"rampS":0,"accelPulses":146,"aTopCtr2":150,"batchLimit":170,"gapLimit":30,"maxSheets":3,"chargeLong":470,"cmdDelayS":0.15,"runUpPulses":100,"runUpBaseS":3,"runUpTopS":1.5,"retardS":1.5,"gsBasis":"slow","siemensEntry":"left","tTopStart":"inletOff","tTopStop":"exitOn","tBaseStart":"inletOff","tBaseStop":"exitOn","mixDrive":"room","tolPulses":3,"timerLimit":10,"timerDebounce":0.3,"laneTol":2,"rollerWidthMM":2650,"glassLeftMM":100,"sensL":20,"sensC":52,"sensR":82,"pairGapMM":100,"gapCross":2,"maxGlassW":96,"covMargin":1}; /*@@BAKED_PARAMS@@*/
 applyParams(BAKED_PARAMS);
 try { applyParams(JSON.parse(localStorage.getItem(PARAM_KEY) || 'null')); } catch(e) {}
+/* every parameter edit is also kept in this browser right away (like the layout); the last Save is still the "saved" reference */
+const WORK_P_KEY = 'fcsim.params.work', SAVED_P0 = {...P};
+try { applyParams(JSON.parse(localStorage.getItem(WORK_P_KEY) || 'null')); } catch(e) {}
 const PARAM_UI = [
   ['h','Speeds & encoders'],
   ['vBaseMM','Base speed (mm/s)'],['vHighMM','High speed (mm/s)'],['slowRes','Slow pulse (in)'],['highRes','High pulse (in)'],['rampS','Base↔High ramp (s)'],
@@ -1844,7 +1868,12 @@ function buildLayoutEditor(){
     + `<div class="f" style="grid-column:1/-1">Right sensor of each pair: ${SENS_K.map((k,i) => `<span class="mono">${SEC[i][0]} ${f1(P[k])} in from glass = ${Math.round(P.glassLeftMM + P[k]*IN2MM)} mm from roller</span>`).join(' · ')} · glass left edge ${Math.round(P.glassLeftMM)} mm from roller left edge</div>`;
   markUnsaved();
 }
-function layoutChanged(){ saveLayout(); G = geom(); buildLayoutEditor(); setDirty(true); }
+function layoutChanged(){ saveLayout(); markEdited(); G = geom(); buildLayoutEditor(); setDirty(true); }
+/* time of the last edit not yet in the cloud (cleared when the cloud and this browser agree) — decides local vs cloud at start / back online */
+const EDIT_LS = 'fcsim.work.at';
+const markEdited = () => { try { localStorage.setItem(EDIT_LS, String(Date.now())); } catch(e) {} };
+const editedAt = () => { try { return +localStorage.getItem(EDIT_LS) || 0; } catch(e) { return 0; } };
+const clearEdited = () => { try { localStorage.removeItem(EDIT_LS); } catch(e) {} };
 let toastT = 0;
 function toast(msg, kind=''){
   const t = $('#toast'); t.textContent = msg; t.className = kind;
@@ -1855,7 +1884,7 @@ function toast(msg, kind=''){
 const setDirty = d => { $('#dirty').hidden = !d; $('#laySaveDef').classList.toggle('ready', d); $('#laySaveDef').classList.toggle('idle', !d); };
 /* yellow = differs from the last Save (rows matched by id; by position if the ids don't line up) */
 let SAVED_P = null;
-function markSaved(){ SAVED_P = paramsObj(); markUnsaved(); }
+function markSaved(p = paramsObj()){ SAVED_P = {...p}; markUnsaved(); }
 function markUnsaved(){
   const L = LAYOUT[room], B = DEFAULT_CHAIN[room] || {rows:[], sensors:{}}, ne = (a, b) => String(a ?? '') !== String(b ?? '');
   const byId = Object.fromEntries(B.rows.map(r => [r.id, r])), useId = L.rows.some(r => byId[r.id]);
@@ -2041,7 +2070,8 @@ function markParams(){
   $('#parCnt').textContent = diff.size ? ` · ${diff.size} changed` : '';
   markUnsaved();
 }
-function paramsChanged(){ updateSECY(); G = geom(); if (typeof buildLayoutEditor==='function' && $('#layWidth')) buildLayoutEditor(); $('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1); markParams(); setDirty(true); }
+function paramsChanged(){ updateSECY(); G = geom(); if (typeof buildLayoutEditor==='function' && $('#layWidth')) buildLayoutEditor(); $('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1); markParams(); setDirty(true);
+  try { localStorage.setItem(WORK_P_KEY, JSON.stringify(paramsObj())); } catch(e) {} markEdited(); }
 
 /* ---------------- wiring ---------------- */
 let running = true, simSpeed = 2;
@@ -2359,7 +2389,7 @@ $('#keysOk').addEventListener('click', () => $('#keys').close());
 $('#keys').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // click on the backdrop
 $('#keysHide').addEventListener('change', e => { try { localStorage.setItem('fcsim.keysHide', e.target.checked ? '1' : '0'); } catch(err) {} });
 
-buildSensorGrid(); buildParams(); readColors(); setRoom('top'); initDefNote(); markSaved(); setDirty(!!document.querySelector('.unsv'));   // setRoom also resets the room switch and accent colour
+buildSensorGrid(); buildParams(); readColors(); setRoom('top'); initDefNote(); markSaved(SAVED_P0); setDirty(!!document.querySelector('.unsv'));   // setRoom also resets the room switch and accent colour
 $('#hover').className = 'dim'; $('#hover').textContent = 'Move the mouse over the drawing to read positions';
 try { if (localStorage.getItem('fcsim.keysHide')!=='1') showKeys(); } catch(e) { showKeys(); }
 $('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1);
@@ -2404,32 +2434,70 @@ requestAnimationFrame(frame);
         }
         if (!r.ok) throw new Error('HTTP ' + r.status);
         say('Saved to this browser + cloud default · ' + new Date().toLocaleTimeString(), 'ok');
-        loadHist();
+        clearEdited(); hideConflict(); loadHist();
         break;
       }
     } catch(e){ say('Saved in this browser, but cloud save failed (' + e.message + ').', 'err'); setDirty(true); }
     saving = false;
   };
-  (async function load(){
+  const when = t => new Date(t).toLocaleString();
+  /* the cloud default becomes the editor content, the saved reference and the local copy */
+  function applyCloud(o){
+    LAYOUT = normLayout(o.layout); saveLayout();
+    if (o.params){ applyParams(o.params); document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; }); }
+    DEFAULT_CHAIN = JSON.parse(JSON.stringify(LAYOUT));
+    try { localStorage.setItem(USER_DEF_KEY, JSON.stringify(LAYOUT)); localStorage.setItem(PARAM_KEY, JSON.stringify(paramsObj())); localStorage.setItem(WORK_P_KEY, JSON.stringify(paramsObj())); localStorage.setItem('fcsim.savedAt', String(o.updatedAt || Date.now())); } catch(e) {}
+    clearEdited(); hideConflict();
+    G = geom(); buildLayoutEditor(); markParams(); setDirty(false); markSaved();
+  }
+  /* same data? compared with sorted keys, cloud params laid over the local ones (a key missing in the cloud is not a difference) */
+  const canon = o => JSON.stringify(o, (k, v) => v && typeof v==='object' && !Array.isArray(v) ? Object.keys(v).sort().reduce((a, x) => (a[x] = v[x], a), {}) : v);
+  function differs(o){
+    const cur = paramsObj(), cp = {...cur};
+    for (const k in (o.params || {})) if (k in cur && typeof o.params[k]===typeof cur[k]) cp[k] = o.params[k];
+    return canon({ layout: LAYOUT, params: cur }) !== canon({ layout: normLayout(o.layout), params: cp });
+  }
+  let CLOUD = null;
+  function showConflict(o){
+    CLOUD = o;
+    $('#syncLocalAt').textContent = 'last edit ' + when(editedAt());
+    $('#syncCloudAt').textContent = 'saved ' + (o.updatedAt ? when(o.updatedAt) : '?');
+    $('#syncBox').hidden = false; $('#syncBtn').hidden = false; setDirty(true);
+    toast('This browser and the cloud have different data — choose one in Settings › Save & files', 'err');
+  }
+  function hideConflict(){ $('#syncBox').hidden = true; $('#syncBtn').hidden = true; }
+  /* start and back online: no local edits → take the cloud quietly; local edits that differ → keep them and ask */
+  async function syncCloud(start){
     try {
       const r = await fetch('/api/state', { cache:'no-store' });
-      if (r.ok){
-        const o = await r.json();
-        locked = !!(o && o.locked);
-        if (o && o.layout && o.layout.top && o.layout.base){
-          LAYOUT = normLayout(o.layout); saveLayout();
-          if (o.params){ applyParams(o.params); document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; }); }
-          DEFAULT_CHAIN = JSON.parse(JSON.stringify(LAYOUT));
-          try { localStorage.setItem(USER_DEF_KEY, JSON.stringify(LAYOUT)); localStorage.setItem(PARAM_KEY, JSON.stringify(paramsObj())); localStorage.setItem('fcsim.savedAt', String(o.updatedAt || Date.now())); } catch(e) {}
-          G = geom(); buildLayoutEditor(); markParams(); setDirty(false); markSaved();
-          say('Loaded from cloud' + (o.updatedAt ? ' · ' + new Date(o.updatedAt).toLocaleString() : '') + (locked ? ' · default is LOCKED (Save keeps changes in this browser only)' : ''));
-        } else say('Cloud is empty: press Save to store your layout and parameters there as the default.');
-        ready = true; loadHist();
-      } else say('Cloud load failed (HTTP ' + r.status + ').', 'err');
-    } catch(e){ say('Cloud not reachable: working locally.'); }
-  })();
+      if (!r.ok){ say('Cloud load failed (HTTP ' + r.status + ').', 'err'); return; }
+      const o = await r.json();
+      locked = !!(o && o.locked); ready = true;
+      if (o && o.layout && o.layout.top && o.layout.base){
+        if (!differs(o)){ applyCloud(o); if (start) say('Loaded from cloud' + (o.updatedAt ? ' · ' + when(o.updatedAt) : '') + (locked ? ' · default is LOCKED (Save keeps changes in this browser only)' : '')); }
+        else if (!editedAt()){ applyCloud(o); say((start ? 'Loaded from cloud' : 'Updated from cloud') + (o.updatedAt ? ' · ' + when(o.updatedAt) : ''), start ? '' : 'ok'); }
+        else showConflict(o);
+      } else say('Cloud is empty: press Save to store your layout and parameters there as the default.');
+      loadHist();
+    } catch(e){ say(start ? 'Cloud not reachable: working locally (edits are kept in this browser).' : 'Cloud still not reachable.'); }
+  }
+  syncCloud(true);
+  window.addEventListener('online', () => syncCloud(false));
+  window.addEventListener('offline', () => say('Offline: edits are kept in this browser. Back online you will be asked if the data differ.', 'err'));
+  $('#syncBtn').addEventListener('click', () => { setPage('settings'); setTab('files'); });
+  $('#useLocal').addEventListener('click', () => {
+    if (!confirm('Make the data in this browser the cloud default?\n\nThe current cloud default stays in Cloud saves.')) return;
+    saveAll();   // cloudSave clears the warning once the cloud has it
+  });
+  $('#useCloud').addEventListener('click', () => {
+    if (!CLOUD) return;
+    if (!confirm('Replace the data in this browser with the cloud default?\n\nYou can bring the local data back with "Undo reset".')) return;
+    try { localStorage.setItem(UNDO_KEY, JSON.stringify({ layout: LAYOUT, params: paramsObj(), at: Date.now() })); } catch(e) {}
+    undoBtn(); applyCloud(CLOUD);
+    say('Using the cloud default · ' + (CLOUD.updatedAt ? when(CLOUD.updatedAt) : ''), 'ok');
+  });
   /* cloud saves list: the current default + the saves it replaced (the Worker keeps them in sim_history) */
-  const HIST_N = 5, when = t => new Date(t).toLocaleString();
+  const HIST_N = 5;
   async function loadHist(){
     try {
       const [cur, past] = await Promise.all([fetch('/api/state', { cache:'no-store' }).then(r => r.json()),
