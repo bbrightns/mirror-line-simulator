@@ -1937,7 +1937,8 @@ $('#layUndoReset').addEventListener('click', () => {
 });
 undoBtn();
 $('#layLoadDef').addEventListener('click', () => {
-  if (!$('#dirty').hidden && !confirm('Throw away all unsaved edits (both rooms + parameters) and go back to the last Save?\n\nYou can bring them back with "Undo reset".')) return;
+  if (!confirm(($('#dirty').hidden ? 'Reset the layout (both rooms) and parameters to the last Save?'
+    : 'Throw away all unsaved edits (both rooms + parameters) and go back to the last Save?') + '\n\nYou can bring them back with "Undo reset".')) return;
   try { localStorage.setItem(UNDO_KEY, JSON.stringify({ layout: LAYOUT, params: paramsObj(), at: Date.now() })); } catch(e) {}
   undoBtn();
   const d = readUserDefault();
