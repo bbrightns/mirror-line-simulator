@@ -1,0 +1,2147 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flow Coater Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light;
+  --bg:#e9ece9; --panel:#f8f9f8; --panel2:#f0f2f0; --ink:#13171a; --muted:#5b646a; --faint:#61696e;
+  --line:#d3d8d4; --line2:#bfc6c1;
+  --base:#b86e08; --high:#087a99; --alarm:#cc2f27; --ok:#2b8548; --soft:#8a6700;
+  --on-high:#fff; --on-ok:#fff; --alarm-fill:#c42a21;
+  --glass:rgba(120,170,215,.40); --glassB:#c4c9ce; --glassEdge:#3f75a6;
+  --free:#a5ada9; --normal:#3a9e98; --chain:#d6a23a; --head:#e2557f; --inv:#7d58b3; --belt:#3d9963; --beltDark:#2c7a4c; --freeNew:#2f6fe0; --room:#5b646a;
+  --canvas:#f3f5f3;
+  --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace; --sans:'IBM Plex Sans',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0c0f11; --panel:#14181b; --panel2:#101316; --ink:#e3e8e6; --muted:#8c969c; --faint:#7f898f;
+    --line:#232a2e; --line2:#30383d;
+    --base:#f2a33c; --high:#3cc3e4; --alarm:#ff5b50; --ok:#4ec27b; --soft:#e4bb3d;
+    --on-high:#0c0f11; --on-ok:#0c0f11;
+    --glass:rgba(140,190,235,.26); --glassB:#9ea5ab; --glassEdge:#80b4e2;
+    --free:#4d555a; --normal:#2b8580; --chain:#9a7426; --head:#a8405f; --inv:#5f4590; --belt:#2a6e47; --beltDark:#1f5536; --freeNew:#3a68c8; --room:#8c969c;
+    --canvas:#101417;
+  }
+}
+:root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#0c0f11; --panel:#14181b; --panel2:#101316; --ink:#e3e8e6; --muted:#8c969c; --faint:#7f898f;
+    --line:#232a2e; --line2:#30383d;
+    --base:#f2a33c; --high:#3cc3e4; --alarm:#ff5b50; --ok:#4ec27b; --soft:#e4bb3d;
+    --on-high:#0c0f11; --on-ok:#0c0f11;
+    --glass:rgba(140,190,235,.26); --glassB:#9ea5ab; --glassEdge:#80b4e2;
+    --free:#4d555a; --normal:#2b8580; --chain:#9a7426; --head:#a8405f; --inv:#5f4590; --belt:#2a6e47; --beltDark:#1f5536; --freeNew:#3a68c8; --room:#8c969c;
+    --canvas:#101417;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans);-webkit-font-smoothing:antialiased;accent-color:var(--high)}
+.mono{font-family:var(--mono)}
+::selection{background:color-mix(in srgb, var(--high) 32%, transparent)}
+:focus-visible{outline:2px solid var(--high);outline-offset:2px}
+.seg button:focus-visible,.tgroup>*:focus-visible,.roomsel button:focus-visible{outline-offset:-2px}
+svg.ico{width:15px;height:15px;flex:none;display:inline-block;vertical-align:-3px}
+button.sm svg.ico{width:13px;height:13px;margin-right:4px;vertical-align:-2px}
+/* "not confirmed on the line yet" — sim defaults waiting for PLC_online_checklist.csv */
+.unc{font:600 11px/1.5 var(--mono);color:var(--soft);border:1px dashed color-mix(in srgb, var(--soft) 65%, transparent);border-radius:4px;padding:0 5px;letter-spacing:0;text-transform:none;white-space:nowrap}
+.uncb{font:600 12px var(--sans);color:var(--soft);background:color-mix(in srgb, var(--soft) 9%, transparent);border:1px dashed color-mix(in srgb, var(--soft) 60%, transparent);border-radius:999px;padding:5px 12px;white-space:nowrap}
+@media (max-width:700px){.uncb .long{display:none}}
+.uncb:hover{background:color-mix(in srgb, var(--soft) 16%, transparent);border-color:var(--soft)}
+/* header: app bar (brand · room · tools) + status strip (status · transport) */
+header{position:sticky;top:0;z-index:20;background:color-mix(in srgb, var(--panel) 90%, transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(90deg, var(--roomc), color-mix(in srgb, var(--roomc) 0%, transparent) 75%)}
+.bar{display:flex;align-items:center;gap:12px 20px;padding:10px 20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
+.logo{width:36px;height:36px;border-radius:10px;flex:none;display:grid;place-items:center;color:#10161a;
+  background:linear-gradient(135deg, var(--roomc), color-mix(in srgb, var(--roomc) 65%, #000))}
+.logo svg{width:20px;height:20px}
+.agc{flex:none;display:flex;align-items:center;height:30px}
+.agc img{width:auto;display:block}
+.agc img.agc-light{height:31.6px;margin:-.3px -1.5px -1.3px -1.5px}
+.agc img.agc-dark{height:39.5px;margin:-4px -5px -5px -5px}
+.agc img.agc-dark{display:none}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .agc img.agc-light{display:none} :root:not([data-theme="light"]) .agc img.agc-dark{display:block}}
+:root[data-theme="dark"] .agc img.agc-light{display:none} :root[data-theme="dark"] .agc img.agc-dark{display:block}
+h1{font-size:15.5px;margin:0;font-weight:700;letter-spacing:-.01em;line-height:1.25}
+h1 span{color:var(--muted);font-weight:500}
+.sub{color:var(--muted);font-size:12px;margin-top:1px}
+.tools{display:flex;gap:6px}
+button.icon{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 10px;border-radius:9px;background:transparent;border:1px solid var(--line2);color:var(--muted);font:600 12.5px var(--sans)}
+button.icon:hover{color:var(--ink);background:var(--panel2)}
+button.icon svg{width:17px;height:17px;display:block}
+.strip{display:flex;align-items:center;justify-content:space-between;gap:10px 20px;flex-wrap:wrap;padding:8px 20px 10px;border-top:1px solid var(--line)}
+.chips{display:flex;flex-wrap:wrap;row-gap:6px}
+.chip{padding:1px 18px;border-left:1px solid var(--line);min-width:0}
+.chip:first-child{padding-left:0;border-left:0}
+.chip .k{font:600 11px/1 var(--sans);letter-spacing:.06em;color:var(--faint);text-transform:uppercase}
+.chip .v{font:600 14px/1.3 var(--mono);margin-top:4px;white-space:nowrap}
+#cSim::before,#cLine::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:7px;vertical-align:1px}
+@media (max-width:700px){.bar,.strip{padding-left:16px;padding-right:16px} .sub,h1 span{display:none} .brand{flex-basis:100%} .chip{padding:1px 12px} .tools .icon span{display:none}}
+.v.high{color:var(--high)} .v.base{color:var(--base)} .v.alarm{color:var(--alarm)} .v.ok{color:var(--ok)}
+main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;padding:14px 20px 20px}
+@media (max-width:1100px){main{grid-template-columns:minmax(0,1fr)}}
+main>section,main>aside{min-width:0}
+@media (max-width:600px){main{padding:12px 16px}header{padding:14px 16px}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:14px}
+.card>h2,.card>summary{margin:0;padding:9px 12px;font:600 11px/1.2 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card>summary{cursor:pointer;list-style:none} .card>summary::-webkit-details-marker{display:none}
+.card:not([open])>summary{border-bottom:0}
+/* drawn chevron on every collapsible header */
+.card>summary::after,details.wide>summary::after{content:"";display:inline-block;flex:none;width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);margin:-4px 3px 0 4px;transition:transform .15s ease-out}
+details[open]>summary::after{transform:rotate(-135deg);margin-top:3px}
+@media (prefers-reduced-motion: reduce){.card>summary::after,details.wide>summary::after{transition:none}}
+.card span.r{font-weight:500;letter-spacing:.02em;text-transform:none}
+.pad{padding:12px}
+canvas{display:block;width:100%}
+#cv{background:var(--canvas);cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;padding:8px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.legend+.legend{border-top:0;padding-top:0}
+.legend i{display:inline-block;width:12px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.legend .lg-h{font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--faint);min-width:46px}
+.legend i.lg-broken{background:transparent;border:1.5px dashed var(--alarm)}
+.legend #lgBare{border:1px solid}
+#hover{font:12px var(--mono);padding:6px 12px;border-top:1px solid var(--line);min-height:29px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:500 13px var(--sans);border:1px solid var(--line2);background:var(--panel2);color:var(--ink);border-radius:6px;padding:7px 11px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.primary{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+button.danger{background:var(--alarm-fill);border-color:var(--alarm-fill);color:#fff;font-weight:700;letter-spacing:.04em}
+button.danger:hover{border-color:var(--ink)}
+button.on{outline:2px solid var(--alarm);outline-offset:-2px;color:var(--alarm)}
+button.sm{padding:3px 8px;font-size:12px}
+button.sm.lit{background:var(--high);color:var(--on-high);border-color:var(--high)}
+button:disabled{opacity:.4;cursor:not-allowed}
+select,input[type=number],textarea{font:13px var(--mono);background:var(--panel2);color:var(--ink);border:1px solid var(--line2);border-radius:5px;padding:5px 6px;width:100%}
+select option{background:var(--panel);color:var(--ink)}
+select optgroup{background:var(--panel2);color:var(--muted);font-style:normal;font-weight:600}
+select optgroup option{color:var(--ink)}
+textarea{min-height:110px;font-size:11.5px}
+label.f{display:grid;grid-template-rows:1fr auto;align-items:end;gap:3px;font-size:11.5px;color:var(--muted)}
+.grid3 select,.grid3 input[type=number]{height:32px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;padding:6px 12px}
+.seg button.sel{background:var(--ink);color:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font:500 11px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em;background:var(--panel2);position:sticky;top:0;z-index:1}
+td:first-child,th:first-child,td.l,th.l{text-align:left}
+td{font-family:var(--mono)}
+th.grp{text-align:center;border-left:1px solid var(--line)} td.bl,th.bl{border-left:1px solid var(--line)}
+.tw{overflow:auto;max-height:320px}
+.pass{color:var(--ok)} .fail{color:var(--alarm);font-weight:600} .warn{color:var(--soft)} .dim{color:var(--faint)}
+.hi{color:var(--high)} .lo{color:var(--base)}
+#log{max-height:300px;overflow:auto;font:12px/1.4 var(--mono)}
+#log div{padding:5px 12px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:52px 62px 1fr;gap:6px}
+#log .HARD{color:var(--alarm)} #log .SOFT{color:var(--soft)} #log .INFO{color:var(--muted)} #log .MOTION{color:var(--ink)}
+.sens{display:grid;grid-template-columns:62px repeat(6,1fr);gap:4px;font:11px var(--mono);align-items:center}
+.sens .h{color:var(--muted);text-align:center;font-size:11px}
+.sbtn{height:24px;border-radius:4px;border:1px solid var(--line2);background:var(--panel2);padding:0;font:11px var(--mono);color:var(--muted)}
+.sbtn.lit{background:var(--high);color:var(--on-high);border-color:var(--high)}
+.sbtn.dis{opacity:.45;border-style:dashed}
+.sbtn.stuck{border:2px solid var(--alarm);color:var(--alarm);background:transparent}
+.sbtn.stuck.lit{background:var(--alarm-fill);color:#fff}
+.note{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.55}
+details.wide{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin:0 20px 14px}
+details.wide>summary{cursor:pointer;padding:10px 12px;font:600 11px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.wide>summary::-webkit-details-marker{display:none}
+details.wide .body{padding:0 12px 12px}
+/* parameters: one card per group, one "label · value · unit" row per setting */
+.pgroups{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:14px;align-items:start}
+@media (max-width:460px){.pgroups{grid-template-columns:minmax(0,1fr)}}
+.pgroups .card{margin:0}
+.pgroups .card>h2 .r{color:var(--faint)}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:10px;align-items:center;padding:6px 12px;border-bottom:1px solid var(--line);font-size:12.5px}
+.prow:last-child{border-bottom:0}
+.prow .pl{color:var(--ink);line-height:1.35}
+.prow .pl small{display:block;color:var(--faint);font-size:11px}
+.prow .pl .unc{margin-left:6px}
+/* a value that differs from the factory number: tinted row + one-click way back */
+.prow.chg{background:color-mix(in srgb, var(--high) 7%, transparent)}
+.prow.chg .pi input{border-color:var(--high)}
+.prow .rv{display:none;margin-top:3px;padding:1px 7px;font:500 11px var(--mono);color:var(--high);background:transparent;border:1px solid color-mix(in srgb, var(--high) 45%, transparent);border-radius:4px}
+.prow .rv:hover{border-color:var(--high)}
+.prow.chg .rv{display:inline-block}
+.prow .pi{display:flex;align-items:center;gap:6px}
+.prow .pi input{width:120px;flex:none;text-align:right}
+.prow .pi .u{font:11px var(--mono);color:var(--muted)}
+.prow.sel{grid-template-columns:minmax(110px,.8fr) minmax(0,1.5fr)}
+.prow select{font:12.5px var(--sans)}
+.issues li{margin:0 0 8px;font-size:13px}
+.issues b{font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:3px;margin-right:6px}
+.tag-a{background:rgba(204,47,39,.14);color:var(--alarm)} .tag-q{background:rgba(166,124,0,.16);color:var(--soft)} .tag-c{background:rgba(43,133,72,.15);color:var(--ok)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font:12px var(--mono)} .kv span:nth-child(odd){color:var(--muted)}
+:root{--roomc:#7EA6B4}
+.roomsel{display:inline-flex;padding:3px;gap:2px;border-radius:10px;background:var(--panel2);border:1px solid var(--line2)}
+.roomsel button{border:0;background:transparent;font:600 12.5px var(--sans);padding:7px 14px;border-radius:7px;color:var(--muted);display:inline-flex;align-items:center;gap:8px}
+.roomsel button i{width:8px;height:8px;border-radius:50%;background:var(--rc);opacity:.6}
+.roomsel button[data-r="base"]{--rc:#FF7032} .roomsel button[data-r="top"]{--rc:#7EA6B4}
+.roomsel button:hover{color:var(--ink)}
+.roomsel button.sel{background:color-mix(in srgb, var(--rc) 24%, var(--panel));color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.25), inset 0 0 0 2px var(--rc)}
+.roomsel button.sel i{opacity:1;width:10px;height:10px;box-shadow:0 0 0 3px color-mix(in srgb, var(--rc) 35%, transparent)}
+.transport{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.play{min-width:112px;height:36px;font:700 14px var(--sans);display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:0 16px;border-radius:9px;border:1px solid}
+.play .ic svg{width:13px;height:13px;display:block}
+.play.running{background:var(--panel2);border-color:var(--line2);color:var(--ink)}
+.play.running:hover{border-color:var(--muted)}
+.play.paused{background:var(--ok);border-color:var(--ok);color:var(--on-ok);animation:pulse 1.6s ease-in-out infinite}
+.estop{height:36px;padding:0 16px;border-radius:9px;display:inline-flex;align-items:center;gap:7px}
+.estop svg{width:15px;height:15px}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 45%, transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb, var(--ok) 0%, transparent)}}
+@media (prefers-reduced-motion: reduce){.play.paused{animation:none}}
+.tgroup{display:inline-flex;height:36px;border:1px solid var(--line2);border-radius:9px;overflow:hidden;background:var(--panel2)}
+.tgroup>*{border:0;border-radius:0;border-left:1px solid var(--line2);background:transparent;height:100%}
+.tgroup>*:first-child{border-left:0}
+.tbtn{font:600 12.5px var(--sans);padding:0 12px;color:var(--ink);display:inline-flex;align-items:center;gap:6px}
+.tbtn:hover{background:var(--panel)}
+.spd{display:inline-flex;align-items:center;gap:2px;font:600 12px var(--sans);color:var(--muted);padding:0 2px 0 12px}
+.spd select{width:auto;height:100%;border:0;background:transparent;font-weight:600;padding:0 6px}
+.v.muted{color:var(--muted)}
+.jbar{height:3px;background:var(--line);border-radius:2px;margin-top:4px;overflow:hidden;visibility:hidden}
+.jbar i{display:block;height:100%;width:0;background:var(--soft)}
+#jobChip.active .k{color:var(--soft)}
+#jobChip.active .jbar{visibility:visible}
+th .u{display:block;font:500 11px var(--mono);letter-spacing:0;text-transform:none;color:var(--faint);margin-top:2px}
+/* fault banner: the third header row, only while the line is stopped / stopping */
+.fault{display:flex;align-items:center;gap:12px;padding:9px 20px;border-top:1px solid color-mix(in srgb, var(--alarm) 55%, transparent);background:color-mix(in srgb, var(--alarm) 12%, var(--panel))}
+.fault[hidden]{display:none}
+.fault>svg{width:20px;height:20px;flex:none;color:var(--alarm)}
+.fault .fmsg{flex:1;min-width:0;font-size:13px;line-height:1.4}
+.fault .fmsg b{color:var(--alarm);font-weight:700;margin-right:8px}
+.fault .fwhy{font:500 12.5px var(--mono)}
+.fault .fhint{color:var(--muted);font-size:12.5px;margin-top:2px}
+.fault .fbtn{flex:none;font-weight:600;background:var(--alarm-fill);border-color:var(--alarm-fill);color:#fff;height:34px;padding:0 14px}
+.fault .fbtn:hover{border-color:var(--ink)}
+.fault.stopping{border-top-color:color-mix(in srgb, var(--soft) 55%, transparent);background:color-mix(in srgb, var(--soft) 12%, var(--panel))}
+.fault.stopping>svg,.fault.stopping .fmsg b{color:var(--soft)}
+@media (max-width:700px){.fault{padding:9px 16px;flex-wrap:wrap}}
+/* predicted results for the HMI size, with the what-if delta against a pinned baseline */
+.kr-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font:600 12px var(--sans);color:var(--ink)}
+.kr-h .unc{margin-left:6px}
+.kr-h .kr-act{display:inline-flex;gap:6px}
+.kr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:5px 14px;margin-top:8px;font-size:12.5px;align-items:baseline}
+.kr .k{color:var(--muted)}
+.kr .v{font:600 14px var(--mono);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.kr .v small{font:500 11px var(--mono);color:var(--muted);margin-left:3px}
+.kr .d{font:500 12px var(--mono);text-align:right;color:var(--muted);min-width:0;white-space:nowrap}
+.kr .d.ch{color:var(--ink)}
+.kr .d:empty{display:none}
+.kr.nobl{grid-template-columns:minmax(0,1fr) auto}
+.kr-f{margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5}
+.kr-f b{color:var(--ink);font-weight:600}
+button.lnk{border:0;background:none;padding:0;color:var(--high);font:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.units{font:11px var(--mono);color:var(--muted);padding:6px 12px;border-top:1px solid var(--line);line-height:1.6}
+.units b{color:var(--ink);font-weight:600}
+#plc th,#plc td{padding:5px 5px} #plc{font-size:11.5px}
+#lay td{padding:3px 6px} #lay input,#lay select{padding:3px 5px;font-size:12px}
+#lay input{width:72px} #lay select{width:160px}
+#lay th.grp{border-bottom:0;padding-bottom:0}
+#lay td.na{color:var(--faint);text-align:center}
+#lay td.fail input{border-color:var(--alarm);color:var(--alarm)}
+#lay .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+#lay td.lbar,#lay th.lbarh{width:100%;min-width:160px}
+.lbar div{position:relative;height:12px;border-radius:3px;background:var(--panel2);border:1px solid var(--line)}
+.lbar i{position:absolute;top:1px;bottom:1px;border-radius:2px;min-width:2px}
+.lbar s{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--muted);opacity:.7}
+.lbar s.e{background:var(--ink);opacity:1}
+#lay .ed{display:inline-flex;border:1px solid var(--line2);border-radius:5px;overflow:hidden}
+#lay .ed button{border:0;border-left:1px solid var(--line2);border-radius:0;background:transparent;padding:2px 7px;font-size:12px;color:var(--muted)}
+#lay .ed button:first-child{border-left:0}
+#lay .ed button:hover{background:var(--panel2);color:var(--ink)}
+#lay .ed button[data-act=del]:hover{color:var(--alarm)}
+#lay tbody tr:hover td{background:var(--panel2)}
+#laySens{width:auto;min-width:min(760px,100%)}
+#laySens select{width:auto;min-width:150px}
+details.help{margin-top:10px;font-size:12px;color:var(--muted)}
+details.help summary{cursor:pointer;color:var(--muted);font-weight:600}
+details.help ul{margin:6px 0 0;padding-left:18px;line-height:1.6}
+details.help b{color:var(--ink)}
+/* settings tabs */
+.stabs{display:flex;flex-wrap:wrap;align-items:flex-end;gap:2px;border-bottom:1px solid var(--line2);margin:0 0 14px}
+.stabs .tabl{display:flex;flex-wrap:wrap;align-items:flex-end;gap:2px}
+.stabs .cnt{font:600 11px var(--mono);color:var(--high);margin-left:4px}
+.stabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;padding:9px 14px 8px;font:600 13px var(--sans);color:var(--muted);margin-bottom:-1px}
+.stabs button:hover{color:var(--ink)}
+.stabs button.sel{color:var(--ink);border-bottom-color:var(--roomc)}
+.stabs .savebox{margin:0 0 6px auto;display:inline-flex;align-items:center;gap:10px}
+.stabs .savebox button{padding:6px 16px;margin:0;font:600 13px var(--sans);background:var(--ink);color:var(--panel);border:1px solid var(--ink);border-radius:6px}
+.stabs .savebox button:hover{color:var(--panel);opacity:.88}
+.dirty{font:600 12px var(--sans);color:var(--soft)}
+.dirty[hidden]{display:none}
+/* toast — short confirmation under the header */
+#toast{position:fixed;left:50%;top:130px;z-index:50;transform:translate(-50%,-8px);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+  max-width:calc(100vw - 32px);padding:10px 16px;border-radius:8px;font:600 13px var(--sans);background:var(--ink);color:var(--panel);box-shadow:0 8px 28px rgba(0,0,0,.28);display:flex;gap:8px;align-items:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.ok{background:var(--ok);color:var(--on-ok)} #toast.err{background:var(--alarm-fill);color:#fff}
+@media (prefers-reduced-motion: reduce){#toast{transition:none}}
+.spanel[hidden]{display:none}
+.facts{display:grid;gap:8px}
+.facts>div{display:grid;grid-template-columns:260px minmax(0,1fr);gap:12px;align-items:center;font-size:12.5px;color:var(--muted)}
+.facts>div>button,.facts>div>.row{justify-self:start}
+@media (max-width:600px){.facts>div{grid-template-columns:minmax(0,1fr)}}
+.pvjump button{padding:4px 10px;font-size:12px}
+.ptgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-top:10px}
+/* settings page */
+#settings{display:none;padding:14px 20px 20px}
+body.settings #settings{display:block}
+body.settings main, body.settings #logicDet{display:none}
+@media (max-width:600px){#settings{padding:12px 16px}}
+.setbar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:14px}
+.setbar h2{margin:0;font-size:16px;font-weight:700}
+.setbar .note{margin:0;flex:1}
+body.settings .gear{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+#pv{background:var(--canvas);cursor:crosshair}
+.pvctl{display:grid;grid-template-columns:2fr repeat(6,minmax(0,1fr));gap:8px}
+.pvctl select,.pvctl input[type=number]{height:32px}
+@media (max-width:900px){.pvctl{grid-template-columns:repeat(3,minmax(0,1fr))} .pvctl .span{grid-column:1/-1}}
+.pvpos{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.pvpos input[type=range]{flex:1;min-width:200px}
+.pvpos input[type=number]{width:100px}
+#pvInfo{font:12px/1.6 var(--mono);padding:8px 12px;border-top:1px solid var(--line)}
+#pvInfo b{font-weight:600}
+/* floating mini preview — shown on the settings page once the big preview scrolls out of view */
+#pvMini{display:none;position:fixed;right:16px;bottom:16px;z-index:30;width:min(760px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line2);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.18);overflow:hidden}
+body.settings #pvMini.on{display:block}
+#pvMini .mh{display:flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border-bottom:1px solid var(--line);font:600 11px var(--sans);color:var(--muted)}
+#pvMini .mh span{flex:1}
+#pvMini .mh button{padding:1px 8px;font-size:12px;line-height:18px}
+#pvMini canvas{display:block;width:100%;background:var(--canvas);cursor:pointer}
+#pvMini.min canvas{display:none}
+#pvMini.min .mh{border-bottom:0}
+/* master table page */
+#master{display:none;padding:14px 20px 20px}
+body.master #master{display:block}
+body.master main, body.master #logicDet{display:none}
+body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+@media (max-width:600px){#master{padding:12px 16px}}
+.ins{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:14px}
+.ins .c{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--line2);border-radius:8px;padding:10px 12px;min-width:0}
+.ins .c.bad{border-left-color:var(--alarm)} .ins .c.wrn{border-left-color:var(--soft)} .ins .c.good{border-left-color:var(--ok)} .ins .c.info{border-left-color:var(--high)}
+.ins .k{font:600 11px/1.2 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--faint);display:flex;gap:6px;align-items:center}
+.ins .v{font:600 18px/1.3 var(--mono);margin-top:5px}
+.ins .d{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
+.ins .d b{color:var(--ink);font-weight:600}
+.mtbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.mtbar .seg button{padding:4px 10px;font-size:12px}
+#mt td,#mt th{padding:5px 7px}
+#mt th[data-k]{cursor:pointer} #mt th[data-k]:hover{color:var(--ink)}
+#mt th.sorted{color:var(--ink)} #mt th.sorted::after{content:" ▾"} #mt th.sorted.asc::after{content:" ▴"}
+#mt tbody tr:hover td{background:var(--panel2)}
+#mt tr.cur td{background:color-mix(in srgb, var(--high) 9%, transparent)}
+#mt tr.cur td:first-child{box-shadow:inset 3px 0 0 var(--high)}
+#mt td .tag{font:500 11px var(--sans);color:var(--muted);border:1px solid var(--line2);border-radius:4px;padding:0 4px;margin-left:6px}
+.win{position:relative;width:200px;height:16px;border-radius:3px;background:var(--panel2)}
+.win b{position:absolute;top:4px;height:8px;border-radius:2px;background:var(--high)}
+.win i{position:absolute;top:0;bottom:0;width:1px;background:var(--faint)}
+.win i.c{background:var(--roomc);width:2px}
+.win i.x{background:var(--soft)}
+</style>
+</head>
+<body class="">
+<header id="hdr">
+  <div class="bar">
+    <div class="brand">
+      <div class="agc" role="img" aria-label="AGC"><img class="agc-light" src="assets/logo_2.png" alt=""><img class="agc-dark" src="assets/logo.png" alt=""></div>
+      <div style="min-width:0">
+        <h1>MIRROR Line Process</h1>
+        <div class="sub">AFT Painting room Simulator</div>
+      </div>
+      <button class="uncb" id="uncBtn" title="The logic follows the ladder printout, but A, Charge Too Long, speeds, encoder resolution and layout distances are sim defaults until they are read online (info/PLC_online_checklist.csv). Click for the open points.">Sim defaults<span class="long"> · not confirmed online</span></button>
+    </div>
+    <div class="roomsel" id="roomSeg" role="radiogroup" aria-label="Paint room">
+      <button data-r="base" role="radio" aria-checked="false" tabindex="-1"><i></i>Base paint room</button><button data-r="top" role="radio" aria-checked="true" class="sel"><i></i>Top paint room</button>
+    </div>
+    <div class="tools">
+      <button class="icon" id="mtBtn" title="Master table — every size with every calculated value + insights" aria-label="Master table"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 9.5h18M3 15h18M9 4v16"></path></svg><span>Master table</span></button>
+      <button class="icon" id="themeBtn" title="Toggle light / dark" aria-label="Toggle light / dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"></path></svg></button>
+      <button class="icon gear" id="setBtn" title="Settings — layout editor, parameters, line preview (Esc to go back)" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.830l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.820l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg><span>Settings</span></button>
+    </div>
+  </div>
+  <div class="strip">
+    <div class="chips">
+      <div class="chip"><div class="k">Simulation</div><div class="v ok" id="cSim">RUNNING</div></div>
+      <div class="chip"><div class="k">Line</div><div class="v ok" id="cLine">MOVING</div></div>
+      <div class="chip"><div class="k">Room speed</div><div class="v base" id="cSpeed">105 mm/s</div></div>
+      <div class="chip"><div class="k">Command</div><div class="v base" id="cCmd">BASE</div></div>
+      <div class="chip"><div class="k">Sim time</div><div class="v" id="cTime">24.8 s</div></div>
+      <div class="chip" id="jobChip" title="No job change running"><div class="k">Job change</div><div class="v muted" id="cJob">—</div><div class="jbar"><i id="jobBar"></i></div></div>
+    </div>
+    <div class="transport">
+      <button id="runBtn" class="play running" title="Run / pause the simulation (Space)"><span class="ic"></span><span class="tx">Pause</span></button>
+      <div class="tgroup">
+        <button id="stepBtn" class="tbtn" title="Pause and advance 0.5 s (S)"><svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 5.5v13l10-6.5z"/><rect x="16.5" y="5.5" width="3" height="13" rx="1"/></svg>Step 0.5 s</button>
+        <button id="resetBtn" class="tbtn" title="Clear the line and start again"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg>Restart</button>
+        <label class="spd" title="Simulation speed ([ slower · ] faster)">Speed<select id="simSpeed">
+          <option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1">1×</option>
+          <option value="2" selected="">2×</option><option value="4">4×</option><option value="8">8×</option>
+        </select></label>
+      </div>
+      <button class="danger estop" id="estopBtn" title="Emergency stop: stops the line now, or as soon as the load at high speed is back to base"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z"/><path d="M8 12h8"/></svg>E-STOP</button>
+    </div>
+  </div>
+  <div class="fault" id="fault" role="alert" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.3v.2"/></svg>
+    <div class="fmsg"><b id="faultTtl">Line stopped</b><span class="fwhy" id="faultWhy"></span><div class="fhint" id="faultHint"></div></div>
+    <button class="fbtn" id="ackBtn">Reset / restart line</button>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="card">
+      <h2>Plan view — glass flow → <span class="row" style="gap:8px"><button class="sm lit" id="scaleBtn" title="Drawn to scale — click to stretch across the line">1:1 true scale · click to stretch ↕</button><span class="r" id="roomLbl">Top paint room</span></span></h2>
+      <canvas id="cv" width="1481" height="411" style="height: 410.564px;" role="img" aria-label="Plan view of the Top paint room: rollers, sensors and glass moving left to right"></canvas>
+      <div id="hover" class="">11042 mm from Entry · +7730 mm vs Inlet · +5950 mm vs curtain · +1040 mm vs Exit · #10 Chain conveyor</div>
+      <div class="legend">
+        <span class="lg-h">Line</span>
+        <span><i style="background:var(--chain)"></i>Chain conveyor (base only)</span>
+        <span><i style="background:var(--head)"></i>Chain head</span>
+        <span><i style="background:var(--normal)"></i>Normal roller (base speed)</span>
+        <span><i style="background:var(--free)"></i>Free roller</span>
+        <span><i style="background:var(--freeNew)"></i>New free roller</span>
+        <span><i style="background:var(--inv)"></i>INV roller (2-speed)</span>
+        <span><i style="background:var(--belt)"></i>Belt (2-speed)</span>
+        <span>Striped = turning, outline <b style="color:var(--base)">base</b> / <b style="color:var(--high)">high</b> speed · faded = still</span>
+      </div>
+      <div class="legend">
+        <span class="lg-h">Glass</span>
+        <span><i id="lgBare"></i><span id="lgBareName">Before top paint (base-painted)</span></span>
+        <span><i id="lgPaint"></i><span id="lgPaintName">Top paint</span>, coated at high speed</span>
+        <span><i id="lgThick"></i>Coated at base speed: dark + hatched (≈ <span id="thickX">11.8</span>× film)</span>
+        <span><i class="lg-broken"></i>Broken sheet</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Room conveyor speed · last 40 s <span class="r"><span class="hi">━ actual</span> &nbsp; <span class="dim">┅ command</span></span></h2>
+      <canvas id="tr" style="height:130px" width="1481" height="130" role="img" aria-label="Room conveyor speed over the last 40 seconds: actual against command"></canvas>
+    </div>
+    <details class="card" id="resCard">
+      <summary><span>Speed-up / back to base per load</span> <span class="r" style="margin-left:auto">pred = formula · sim = simulated <b class="unc" title="Computed with sim defaults (A, speeds, encoder resolution, layout) that are not confirmed online yet">sim defaults</b> <button class="sm" id="csvBtn" title="Download all loads as CSV"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14"/></svg>CSV</button></span></summary>
+      <div class="tw" style="max-height:480px"><table id="res"><thead>
+        <tr><th></th><th></th><th></th><th></th><th></th><th class="grp" colspan="3">Speed-up at<span class="u">glass front, mm</span></th><th class="grp" colspan="3">Back to base at<span class="u">glass front, mm</span></th><th class="grp" colspan="2">Curtain @ high<span class="u">% of glass</span></th><th class="grp" colspan="2">High speed<span class="u">seconds</span></th><th class="grp" colspan="2"><span id="inRoomHdr">In room (Inlet ↓ → Exit ↑)</span><span class="u">seconds</span></th></tr>
+        <tr><th>Load</th><th class="l">Size<span class="u">W×L in · across×flow</span></th><th>PLC L<span class="u">in</span></th><th>Gₛ<span class="u">slow p</span></th><th>K<span class="u">p</span></th>
+          <th class="bl">pred<span class="u">from Entry</span></th><th>sim<span class="u">from Entry</span></th><th>vs Inlet<span class="u">mm</span></th>
+          <th class="bl">pred<span class="u">from Entry</span></th><th>sim<span class="u">from Entry</span></th><th>vs Exit<span class="u">mm</span></th>
+          <th class="bl">pred</th><th>sim</th><th class="bl">pred</th><th>sim</th><th class="bl">pred</th><th>sim</th></tr>
+      </thead><tbody></tbody></table></div>
+      <div class="units"><b>Units</b> · in = inch · mm = millimetre · s = seconds · <b>slow p</b> = slow-encoder pulse (1 p = 0.3125 in = 7.94 mm) · <b>high p</b> = high-encoder pulse (1 p = 0.265 in = 6.73 mm) · positions = glass front, mm from Entry sensor · vs Inlet / vs Exit: + = after the sensor, − = before · pred = formula, sim = simulated</div>
+    </details>
+  </section>
+
+  <aside>
+
+    <div class="card"><h2>HMI size <span class="r" id="hmiNow">S 84×120 · sensors L C R</span></h2><div class="pad">
+      <label class="f">Size (production list)<select id="preset"></select></label>
+      <div class="grid3" style="margin-top:8px">
+        <label class="f">Sheet W (in)<input type="number" id="rW" min="6" max="96" step="1"></label>
+        <label class="f">Sheet L (in)<input type="number" id="rLen" step="0.5" min="6" max="200"></label>
+        <label class="f">Loads (0=∞)<input type="number" id="rN" min="0" step="1"></label>
+        <label class="f">Across<input type="number" id="rAcross" min="1" max="4" step="1"></label>
+        <label class="f">In flow<input type="number" id="rNLen" min="1" max="4" step="1"></label>
+        <label class="f">Alignment<select id="rAlign"><option value="left">Left ref</option><option value="center">Centered</option><option value="split">Split L/R</option></select></label>
+        <label class="f">Batch gap (in)<input type="number" id="rGapX" step=".5" min="0"></label>
+        <label class="f">Load gap (in)<input type="number" id="rGapY" step=".5" min="0"></label>
+        <label class="f" title="Delay when the size changes: no new glass is fed for this long after Confirm">Job change (min)<input type="number" id="rJob" step="0.5" min="0" value="1"></label>
+      </div>
+      <div class="kr-h"><span>Predicted for this size<b class="unc" title="Computed with sim defaults (A, speeds, encoder resolution, layout) that are not confirmed online yet">sim defaults</b></span>
+        <span class="kr-act"><button class="sm" id="blPin" title="Keep the current parameters and layout as the reference, then change things in Settings to see the difference">Pin as baseline</button><button class="sm" id="blClr" hidden>Clear</button></span></div>
+      <div class="kr nobl" id="kr"></div>
+      <div class="kr-f" id="krFoot"></div>
+      <div class="note" id="rNote"></div>
+      <div class="row" style="margin-top:10px"><button class="primary" id="confirmBtn" disabled="" title="Change the size first — a job change only happens when the size changes">Size unchanged</button></div>
+    </div></div>
+
+    <div class="card"><h2>Siemens PLC — load queue</h2>
+      <div class="tw" style="max-height:220px"><table id="plc"><thead><tr><th>#</th><th class="l">Sheets<span class="u">pcs</span></th><th>L<span class="u">in</span></th><th>Gₛ<span class="u">slow p</span></th><th>K<span class="u">p</span></th><th>X<span class="u">high p</span></th><th class="l">State</th><th>Remain<span class="u">sp / hp</span></th></tr></thead><tbody></tbody></table></div>
+      <div class="pad kv" id="encKv" style="padding-top:8px"><span>Slow enc #1</span><span>328 p</span><span>High enc</span><span>387 p · 105 mm/s</span></div>
+      <div class="units">sp = slow pulses left until speed-up · hp = high pulses left until back to base · WAIT → HIGH → DONE</div>
+    </div>
+
+    <div class="card"><h2>Event log <span class="r"><label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="motOnly" checked="">motion only</label> <button class="sm" id="clrLog">Clear</button></span></h2><div id="log" role="log" aria-live="off" aria-label="Event log"></div></div>
+
+    <details class="card" id="safety"><summary><span>Fault injection &amp; Mitsubishi checks</span></summary><div class="pad">
+      <label style="font-size:12.5px;display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="mitsuOn" style="margin-top:3px"><span>Run Mitsubishi checks (length compare, speed-up timer, lane / A-B sensor checks). Off = motion only.</span></label>
+      <label style="margin-top:8px;font-size:12.5px;display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="ilk" style="margin-top:3px"><span>Alarms trip interlock. (Charge Too Long always stops the line.)</span></label>
+      <div class="row" style="margin-top:10px">
+        <button data-f="break">Break glass in room</button>
+        <button data-f="overlap">Overlap next load</button>
+        <button data-f="missing">Missing sheet next load</button>
+        <button data-f="hEncDead" class="tog">High encoder dead</button>
+        <button data-f="vfdNoResp" class="tog">VFD no run-up</button>
+        <button data-f="vfdStuckHigh" class="tog">VFD stuck high</button>
+      </div>
+      <div style="margin-top:12px;font:600 11px var(--mono);color:var(--muted);letter-spacing:.04em">SENSORS — click to fail (stuck OFF) · dashed = not used for this size</div>
+      <div class="sens" id="sensGrid" style="margin-top:6px"></div>
+    </div></details>
+  </aside>
+</main>
+
+<div id="settings">
+  <div class="setbar">
+    <h2>Settings</h2>
+    <span class="note">Layout and parameters apply live to the simulator (it keeps running in the background). Room = the room selected at the top.</span>
+    <button class="primary" id="setBack" title="Back to the simulator (Esc)">← Back to simulator</button>
+  </div>
+
+  <div class="card">
+    <h2>Line preview — glass size on the layout <span class="r">mm from Entry · drag the slider or click the drawing to move the glass</span></h2>
+    <div class="pad" style="padding-bottom:10px">
+      <div class="pvctl">
+        <label class="f span">Size<select id="pvPreset"></select></label>
+        <label class="f">Sheet W (in)<input type="number" id="pvW" min="6" max="96" step="1"></label>
+        <label class="f">Sheet L (in)<input type="number" id="pvL" min="6" max="200" step="0.5"></label>
+        <label class="f">Across<input type="number" id="pvAcross" min="1" max="4" step="1"></label>
+        <label class="f">In flow<input type="number" id="pvNLen" min="1" max="4" step="1"></label>
+        <label class="f">Alignment<select id="pvAlign"><option value="left">Left ref</option><option value="center">Centered</option><option value="split">Split L/R</option></select></label>
+        <label class="f">Batch gap (in)<input type="number" id="pvGapX" min="0" step=".5"></label>
+      </div>
+      <div class="pvpos">
+        <span class="note" style="margin:0">Glass front</span>
+        <input type="range" id="pvPos" step="1" min="-1474" max="13210">
+        <input type="number" id="pvPosN" step="1" title="Glass front, mm from Entry">
+        <span class="note" style="margin:0">mm</span>
+        <span class="seg pvjump" title="Jump the glass front to…">
+          <button data-pv="entry">Entry</button><button data-pv="accel">▲ Speed-up</button><button data-pv="inlet">Inlet</button><button data-pv="decel">▼ Back to base</button><button data-pv="exit">Exit</button>
+        </span>
+        <button class="sm" id="pvPlay">▶ Move along line</button>
+        <button class="sm" id="pvHmi" title="Copy the size from the HMI size panel">↺ Copy HMI size</button>
+      </div>
+    </div>
+    <canvas id="pv" width="1855" height="527" style="height: 527.053px;" role="img" aria-label="Line preview: the chosen glass size placed on the roller layout, with Entry, Inlet, Exit and the predicted speed-up and back-to-base points"></canvas>
+    <div id="pvInfo"></div>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <div id="pvMini" class="min on">
+    <div class="mh"><span>Line preview</span>
+      <button class="sm" id="pvMiniTop" title="Back to the full preview">↑</button>
+      <button class="sm" id="pvMiniMin" title="Collapse / expand">+</button>
+    </div>
+    <canvas id="pvMiniCv" title="Click to go back to the full preview"></canvas>
+  </div>
+
+  <div class="stabs">
+    <div class="tabl" role="tablist" aria-label="Settings sections">
+      <button data-tab="rows" role="tab" id="tab-rows" aria-controls="panel-rows">Roller layout <span class="dim">· <span id="layRoom">Top</span> room</span></button>
+      <button data-tab="sens" role="tab" id="tab-sens" aria-controls="panel-sens">Sensors &amp; curtain</button>
+      <button data-tab="params" role="tab" id="tab-params" aria-controls="panel-params">Parameters<span class="cnt" id="parCnt"></span></button>
+      <button data-tab="files" role="tab" id="tab-files" aria-controls="panel-files">Save &amp; files</button>
+    </div>
+    <span class="savebox">
+      <span class="dirty" id="dirty" hidden="" title="Layout or parameters changed since the last save">● Unsaved changes</span>
+      <button class="primary" id="laySaveDef" title="Save the layout (both rooms) and all parameters as your default in this browser · Ctrl+S"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px"><path d="M5 3.5h11.5L20 7v13.5H5z"/><path d="M8.5 3.5V9h7V3.5M8.5 20.5v-6h7v6"/></svg>Save</button>
+    </span>
+  </div>
+
+  <div class="card spanel" data-panel="rows" id="panel-rows" role="tabpanel" aria-labelledby="tab-rows" hidden="">
+    <h2><span>Roller rows — in flow order, left → right</span> <span class="r">all values in mm · Entry sensor = 0</span></h2>
+    <div class="tw" style="max-height:none"><table id="lay"><thead>
+      <tr><th></th><th></th><th class="grp" colspan="3">Rollers</th><th class="grp">Belt</th><th class="grp">Gap</th><th class="grp" colspan="3">Where it sits on the line<span class="u">mm from Entry · ┃ = Entry / Inlet / Exit</span></th><th></th></tr>
+      <tr><th>#</th><th class="l">Type</th><th class="bl">Qty<span class="u">pcs</span></th><th title="Roller diameter">Ø<span class="u">mm</span></th><th title="① Centre-to-centre distance between rollers of this row">① Pitch<span class="u">c-c mm</span></th><th class="bl">Length<span class="u">mm</span></th><th class="bl" title="② From the centre of this row's last roller to the centre of the next row's first roller (a belt counts from its edge)">② To next row<span class="u">c-c mm</span></th><th class="bl">Start</th><th>End</th><th class="l lbarh"></th><th class="l">Edit</th></tr>
+    </thead><tbody></tbody></table></div>
+    <div class="pad" style="padding-top:10px">
+      <div class="row"><button class="sm" id="layAddUp">+ Add row at upstream end</button><button class="sm" id="layAddDown">+ Add row at downstream end</button></div>
+      <details class="help"><summary>How to read this table</summary>
+        <ul>
+          <li>One row = one group of identical rollers (one colour in the drawing), in flow order.</li>
+          <li><b>① Pitch</b> = centre-to-centre between rollers inside the row. <b>② To next row</b> = centre of this row's last roller → centre of the next row's first roller (a belt counts from its edge). The last row has no ②.</li>
+          <li><b>Red ②</b> = this row overlaps the next one. <b>—</b> = not used for this type (a belt has a length, rollers have qty / Ø / pitch).</li>
+          <li><b>＋</b> inserts a copy after the row. Any change pushes the following rows to the right. <b>◆</b> under a type = a sensor or room wall is tied to that row.</li>
+          <li>Drive rule: glass touching an INV roller or belt moves at room speed; otherwise touching a chain / chain head / normal roller → base speed; on free rollers only it keeps the speed it had.</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+
+  <div class="card spanel" data-panel="sens" id="panel-sens" role="tabpanel" aria-labelledby="tab-sens" hidden="">
+    <h2><span>Sensors &amp; room walls</span> <span class="r">position = edge of the chosen row + offset · + = downstream / right</span></h2>
+    <div class="tw" style="max-height:none"><table id="laySens"><thead><tr><th class="l">Sensor</th><th class="l">Tied to row</th><th class="l">Edge of that row</th><th>Offset<span class="u">mm, + = right</span></th><th>= Position<span class="u">mm from Entry</span></th></tr></thead><tbody></tbody></table></div>
+    <div class="pad">
+      <div class="ptgrid" id="layPts" style="margin-top:0"></div>
+      <div style="margin-top:14px;font:600 11px var(--mono);color:var(--muted);letter-spacing:.04em">SENSOR POSITION ACROSS THE GLASS WIDTH (both rooms · same values as the Parameters tab)</div>
+      <div class="ptgrid" id="layWidth"></div>
+      <p class="note">Sensors move with the row they are tied to; Entry is always 0. Room walls are drawing only (they don't change the motion). The curtain is always the centre of the belt gap — change the belt rows to move it.</p>
+    </div>
+  </div>
+
+  <div class="spanel" data-panel="params" id="panel-params" role="tabpanel" aria-labelledby="tab-params" hidden="">
+    <p class="note" style="margin:0 0 12px">Values marked <b class="unc">check #…</b> are sim defaults that the line has not confirmed yet; the number is the item in <span class="mono">info/PLC_online_checklist.csv</span>. A tinted row differs from the factory value.</p>
+    <div class="pgroups" id="params"></div></div>
+
+  <div class="card spanel" data-panel="files" id="panel-files" role="tabpanel" aria-labelledby="tab-files">
+    <h2>Save, reset &amp; share the layout</h2>
+    <div class="pad">
+      <div class="facts">
+        <div><button class="sm" id="layLoadDef">Reset room to my default</button><span>Undo edits in the selected room back to your last Save.</span></div>
+        <div><button class="sm" id="layReset">Reset room to drawing values</button><span>Go back to the original drawing values for the selected room.</span></div>
+        <div><button class="sm" id="parReset">Reset parameters to factory values</button><span>Put every value in the Parameters tab back to the built-in numbers.</span></div>
+        <div><button class="sm" id="layDownload"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14"/></svg>Download HTML</button><span>A copy of this simulator with your layout and parameters built in — opens the same on any computer.</span></div>
+        <div><span class="row" style="gap:6px"><button class="sm" id="layExport">Export JSON</button><button class="sm" id="layImport">Import JSON</button></span><span>Copy the layout and parameters as text, or paste one in and press Import again.</span></div>
+      </div>
+      <p class="note" id="defNote">Saved layout (both rooms) + parameters · 7:10:36 PM (this browser). Use Download HTML to keep them inside the file.</p>
+      <textarea id="layJson" style="display:none;margin-top:8px" spellcheck="false"></textarea>
+    </div>
+  </div>
+</div>
+
+<div id="master">
+  <div class="setbar">
+    <h2>Master table</h2>
+    <span class="note">Every production size, calculated from the current layout &amp; parameters · <b id="mtRoom">Top</b> paint room (switch at the top) · positions = glass front, mm from Entry · gaps from the HMI panel <b class="unc" title="Computed with sim defaults (A, speeds, encoder resolution, layout) that are not confirmed online yet">sim defaults</b></span>
+    <button class="primary" id="mtBack" title="Back to the simulator (Esc)">← Back to simulator</button>
+  </div>
+  <div class="ins" id="mtIns"></div>
+  <div class="card">
+    <h2><span>All sizes <span class="r" id="mtCount"></span></span>
+      <span class="r mtbar">
+        <span class="seg" id="mtGrp"><button data-g="all" class="sel">All</button><button data-g="Batch sizes">Batch</button><button data-g="Single sizes">Single</button></span>
+        <label style="font-size:11.5px;display:inline-flex;gap:5px;align-items:center"><input type="checkbox" id="mtIssues">issues only</label>
+        <button class="sm" id="mtCsv" title="Download this table as CSV"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14"/></svg>CSV</button>
+      </span></h2>
+    <div class="tw" style="max-height:none"><table id="mt"><thead></thead><tbody></tbody></table></div>
+    <div class="units"><b>How to read</b> · click a column to sort · <b>→ HMI</b> loads the size into the HMI panel (you still press Confirm) · highlighted row = size running now ·
+      <b>High-speed window</b>: <span class="hi">━</span> speed-up → back to base along the line, ticks = Inlet │ curtain <span style="color:var(--roomc)">┃</span> Exit <span class="warn">│</span> ·
+      <b>Curtain @ high</b> = share of the glass that passes the curtain at high speed (below 100% = part coated at base speed, thick film) ·
+      <b>Feed</b> ≈ glass area per hour if loads follow each other at base speed with the HMI load gap · * = PLC knows L late (speed-up after the formula point)</div>
+  </div>
+</div>
+
+<details class="wide" id="logicDet">
+  <summary>Logic used &amp; open points</summary>
+  <div class="body"><ul class="issues">
+    <li><b class="tag-c">CONFIRMED</b>Gₛ = glass length counted by the slow encoder (1 p = 0.3125 in) from Entry ON to OFF. The workbook tables that use L/0.265 are wrong (selectable in Parameters for comparison).</li>
+    <li><b class="tag-c">CONFIRMED</b>Source: Siemens ladder printout FC0/FC1/FC2–FC5/FC10/FC12 (AFT SP MIR-SB03 book, p.16–100). The program doesn't know Single/Batch. If the <b>1st</b> sheet is ≤ 170 p it waits 30 p for another (the 2nd sheet is not length-checked); max 3 sheets — at the 3rd OFF it closes. L = 1st ON → last OFF incl. gaps (with 3 sheets the PLC adds L3 twice and never L2 — harmless for equal sheets).</li>
+    <li><b class="tag-c">CONFIRMED</b>Speed-up when the slow counter (from the 1st front edge) reaches A + L − ⅓·L<sub>last</sub>; the command follows 150 ms later (T20/T40). X = 1110 − L + ⅔·L₁ − K, with K from the <b>1st sheet</b> length (top table steps at 340, base at 320); X is counted in high pulses (0.265 in) from the command. Single sheet: A + ⅔L and 1110 − ⅓L − K. Two counters: a 3rd load arriving while both wait is not tracked.</li>
+    <li><b class="tag-c">CONFIRMED</b>Run-up fault: high command but &lt; 100 high p within T12 (base) / T32 (top). Retardation fault: base command but high-speed feedback after T13.</li>
+    <li><b class="tag-q">CHECK ONLINE</b>The DB values in the printout are offline start values, not what runs in the CPU (DB says Charge Too Long 450 p = 140.6 in, yet 144 in glass runs every day → 470 used). Still to read online: A (DB9/DB10.DBW140/142: offline 150, supplier 146), run-up times (DB8.DBW24 = 3.0 s base, DBW64 = 1.5 s top), and DBW144–148 ("Puls lifting/lowering", a 2nd path that can end high speed — not in the printout, not simulated).</li>
+    <li><b class="tag-c">CONFIRMED</b>Yellow = chain conveyor (base only), pink = chain head, grey = free roller, blue = new free roller, purple = INV roller (2-speed, top room only: Mitsubishi inverter 33M1 switched by FC11 on the same PLC command as the Lenze servo — high with Q20.1, back to low at setpoint X / Q20.0).</li>
+    <li><b class="tag-c">CONFIRMED</b>Designed for one load at high speed at a time; an overlap is logged (possible bug). Largest load 470 p — longer stops the line immediately (Charge Too Long).</li>
+    <li><b class="tag-c">CONFIRMED</b>Gap inside a batch 2 in, between loads 10 in (= 32 p, only 2 p above the 30 p merge window). Speed change itself = instant (ramp 0 s).</li>
+    <li><b class="tag-q">ASSUMED</b>Glass touching both a 2-speed element and a chain follows the 2-speed element (Parameters → Glass physics). This decides whether the last sheet of the previous load, still half on belt 2, is yanked into the sheet ahead when the next load speeds up.</li>
+    <li><b class="tag-a">FINDING</b>3-in-flow batches (24×36, 42×32, 48×36): with the ladder formula (speed-up at A + L − ⅓·L<sub>last</sub>) the 3rd sheet is already on the INV rollers at speed-up → 100 % coated at high speed in both rooms. (The earlier A + ⅔L formula left it on the free rollers in the base room → ~⅓ thick film; that finding is withdrawn.)</li>
+    <li><b class="tag-a">FINDING</b>Top room, B 42×32 · 2×3 with 10 in between loads: the next load at high speed touches the last sheet of the previous load near the end of belt 2 (~1 m before Exit), which is still at base speed. Depends on the layout estimates — check on the line.</li>
+    <li><b class="tag-q">ASSUMED</b>Layout dimensions are first estimates from position_sensor.pdf — correct them in the Layout editor. Base-room Exit sensor is a placeholder.</li>
+    <li><b class="tag-a">EDGE</b>Single sheet L ≥ 3(A+1) p (441 p = 137.8 in with A 146; 141.6 in with A 150): the setpoint A + L − ⌊L/3⌋ is below L, i.e. reached before the tail clears Entry. The PLC only compares after the measurement ends (Entry OFF), so the speed-up comes right then — later than the formula (marked * in the table). 144 in: setpoint 454 p, L known at 461 p → 7 p ≈ 56 mm late, still 100 % coated at high speed. Batches never: they close 30 p after the last OFF, and A − ⌊L<sub>last</sub>/3⌋ ≥ 90 p.</li>
+  </ul></div>
+</details>
+
+<script>
+"use strict";
+const MM2IN = 1/25.4, IN2MM = 25.4;
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+
+/* ---------------- data ---------------- */
+const K_TABLE = {   // FC0 (base) / FC1 (top) ladder, thresholds evaluated on the 1st sheet length
+  base: [[320,155],[280,125],[240,115],[205,90],[172,70],[0,115]],
+  top:  [[340,155],[280,105],[240,90],[205,80],[172,55],[0,115]]
+};
+/* production list: [width, length, across, in flow, sensors ON (1=L 2=C 3=R), optional tag shown in dropdown as [tag]] */
+const PROD_B = [[24,36,4,3,'123'],[30,50,3,2,'123'],[30,60,3,1,'123','Murakami'],[30,54.5,3,1,'123','Murakami'],[36,60,2,1,'12'],[36,72,2,1,'12'],
+  [42,32,2,3,'13'],[42,72,2,1,'13'],[43,49,2,2,'13','Cosmetic- White'],[43,65,2,1,'13'],[48,36,2,3,'13'],[48,60,2,1,'13'],[48,72,2,1,'13']];
+const PROD_S = [[60,120,'12'],[72,120,'12'],[84,126,'123'],[84,60,'123'],[84,72,'123'],[84,84,'123'],[84,120,'123'],[84,144,'123'],
+  [96,60,'123'],[96,72,'123'],[96,84,'123'],[96,120,'123'],[96,144,'123']];
+const PRESETS = [
+  ...PROD_B.map(([w,len,nA,nL,on,tag]) => ({grp:'Batch sizes', name:`B ${w}×${len} · ${nA}×${nL}`, w, len, nAcross:nA, nLen:nL, on, tag,
+      align:'left'})),
+  ...PROD_S.map(([w,len,on]) => ({grp:'Single sizes', name:`S ${w}×${len}`, w, len, nAcross:1, nLen:1, on, align:'left'}))
+];
+const TYPES = {
+  chain:   {label:'Chain conveyor', drive:'base', col:'chain'},
+  head:    {label:'Chain head',     drive:'base', col:'head'},
+  normal:  {label:'Normal roller',  drive:'base', col:'normal'},
+  free:    {label:'Free roller',    drive:'free', col:'free'},
+  freeNew: {label:'New free roller',drive:'free', col:'freeNew'},
+  inv:     {label:'INV roller (2-speed)', drive:'room', col:'inv'},
+  belt:    {label:'Belt (2-speed)', drive:'room', col:'belt'}
+};
+/* default layouts — mm, Entry sensor = 0, start = left (upstream) edge of first element. First estimates from position_sensor.pdf */
+const DEFAULT_LAYOUT = {
+  top: { rows:[
+    {type:'chain', start:-1126, qty:4, dia:63,  pitch:254},
+    {type:'head',  start:-110,  qty:1, dia:63,  pitch:0},
+    {type:'free',  start:202,   qty:4, dia:80,  pitch:292},
+    {type:'inv',   start:1398,  qty:6, dia:100, pitch:330},
+    {type:'belt',  start:3288,  len:1600},
+    {type:'belt',  start:4963,  len:3640},
+    {type:'free',  start:8703,  qty:5, dia:80,  pitch:140},
+    {type:'freeNew',start:9423, qty:1, dia:80,  pitch:0},
+    {type:'head',  start:9590,  qty:1, dia:63,  pitch:0},
+    {type:'chain', start:9844,  qty:4, dia:63,  pitch:254}
+  ], inlet:3193, exit:9543, curtain:null, wallIn:2281, wallOut:10073 },
+  base: { rows:[
+    {type:'chain', start:-1033, qty:2, dia:78, pitch:305},
+    {type:'free',  start:-423,  qty:2, dia:78, pitch:305},
+    {type:'free',  start:350,   qty:4, dia:78, pitch:241},
+    {type:'belt',  start:1300,  len:3645},
+    {type:'belt',  start:5110,  len:3620},
+    {type:'free',  start:8862,  qty:5, dia:78, pitch:130},
+    {type:'head',  start:9622,  qty:1, dia:78, pitch:0},
+    {type:'chain', start:9927,  qty:4, dia:78, pitch:305}
+  ], inlet:530, exit:9540, curtain:null, wallIn:350, wallOut:10200 }
+};
+/* Editor model (all mm):
+   rows in flow order; each row has "gap" = edge-to-edge distance from the previous row, so inserting / resizing pushes neighbours.
+   Sensors are tied to a roller row: position = that row's upstream or downstream edge + offset.
+   Coordinates are then shifted so the Entry sensor = 0. */
+const rowWidth = r => r.type==='belt' ? (+r.len||0) : (Math.max(1, Math.round(+r.qty||1))-1)*(+r.pitch||0) + (+r.dia||0);
+let RID = 0; const newId = () => 'r' + (Date.now()%1e6).toString(36) + (RID++);
+/* reference point of a row towards its neighbour: roller row → centre of its first / last roller; belt → its edge */
+const firstOff = r => r.type==='belt' ? 0 : (+r.dia||0)/2;
+const lastOff  = r => r.type==='belt' ? 0 : (+r.dia||0)/2;
+function chainRaw(L){ const pos = [];
+  L.rows.forEach((r,i) => {
+    let x = 0;
+    if (i){ const p = L.rows[i-1];
+      x = p.next !== undefined ? (pos[i-1][1] - lastOff(p)) + (+p.next||0) - firstOff(r)   // c-c to next row
+                               : pos[i-1][1] + (+r.gap||0); }                               // legacy edge gap
+    pos.push([x, x + rowWidth(r)]); });
+  return pos; }
+function gapsToNext(rows){
+  rows.forEach((r,i) => { if (i < rows.length-1 && r.next === undefined) r.next = Math.round(((+rows[i+1].gap||0) + lastOff(r) + firstOff(rows[i+1]))*10)/10; });
+  rows.forEach(r => delete r.gap); if (rows.length) delete rows[rows.length-1].next; }
+function edgeOf(L, pos, sp){ const i = L.rows.findIndex(r=>r.id===sp.ref); return i<0 ? null : (sp.edge==='up' ? pos[i][0] : pos[i][1]); }
+function positions(L){
+  const raw = chainRaw(L), e = L.sensors && L.sensors.entry ? edgeOf(L, raw, L.sensors.entry) : null;
+  const z = e==null ? 0 : e + (+L.sensors.entry.off||0);
+  return raw.map(([a,b]) => [a - z, b - z]);
+}
+function sensorAt(L, key, pos){ const sp = L.sensors && L.sensors[key]; if (!sp) return null; const e = edgeOf(L, pos, sp); return e==null ? null : e + (+sp.off||0); }
+function refFor(L, pos, x){   // tie an absolute position to the best roller row
+  const i = pos.findIndex(([a,b]) => x >= a && x <= b);
+  if (i >= 0) return {ref:L.rows[i].id, edge:'up', off:Math.round(x - pos[i][0])};
+  let best = -1; pos.forEach(([a,b],k) => { if (b <= x && (best < 0 || b > pos[best][1])) best = k; });
+  if (best < 0) best = 0;
+  return {ref:L.rows[best].id, edge: best===0 && pos[0][0] > x ? 'up' : 'down', off:Math.round(x - (best===0 && pos[0][0] > x ? pos[0][0] : pos[best][1]))};
+}
+function toV3(L){   // accept v1 (absolute starts) / v2 (anchor chain) / v3
+  if (L.sensors) { for (const r of L.rows) if (!r.id) r.id = newId(); if (L.rows.some(r=>r.gap!==undefined)) gapsToNext(L.rows);
+    if (!L.sensors.wallIn){ const pos = positions(L); L.sensors.wallIn = refFor(L, pos, +L.wallIn||0); L.sensors.wallOut = refFor(L, pos, +L.wallOut||0); delete L.wallIn; delete L.wallOut; }
+    return L; }
+  let abs, rows;
+  if (L.rows.length && L.rows[0].start !== undefined && L.anchor === undefined){
+    rows = L.rows.map(r=>({...r})).sort((a,b)=>a.start-b.start);
+    abs = rows.map(r => [+r.start, +r.start + rowWidth(r)]);
+    rows = rows.map((r,i) => { const o = {type:r.type}; if (r.type==='belt') o.len = +r.len; else { o.qty = +r.qty; o.dia = +r.dia; o.pitch = +r.pitch; }
+      o.gap = i ? Math.round(abs[i][0] - abs[i-1][1]) : 0; return o; });
+  } else {   // v2: anchor + anchorStart
+    rows = L.rows.map(r=>({...r})); const raw = chainRaw({rows}); const a = clamp(L.anchor|0, 0, rows.length-1);
+    const sh = (+L.anchorStart||0) - raw[a][0]; abs = raw.map(([x,y]) => [x+sh, y+sh]);
+  }
+  rows.forEach(r => { r.id = newId(); delete r.start; });
+  const out = { rows, curtain: L.curtain ?? null, wallIn: L.wallIn, wallOut: L.wallOut, sensors:{} };
+  out.sensors.entry = refFor(out, abs, 0);
+  out.sensors.inlet = refFor(out, abs, +L.inlet);
+  out.sensors.exit  = refFor(out, abs, +L.exit);
+  out.sensors.wallIn  = refFor(out, abs, +L.wallIn);
+  out.sensors.wallOut = refFor(out, abs, +L.wallOut);
+  delete out.wallIn; delete out.wallOut;
+  gapsToNext(out.rows);
+  return out;
+}
+const normLayout = o => ({ top: toV3(JSON.parse(JSON.stringify(o.top))), base: toV3(JSON.parse(JSON.stringify(o.base))) });
+let BAKED_DEFAULT = {"top":{"rows":[{"type":"chain","qty":5,"dia":63,"pitch":254,"id":"ri5by0","next":200},{"type":"head","qty":1,"dia":63,"pitch":0,"id":"ri5by1","next":265},{"type":"free","qty":3,"dia":80,"pitch":292.1,"id":"ri5by2","next":300},{"type":"inv","qty":8,"dia":100,"pitch":300,"id":"ri5by3","next":190},{"type":"belt","len":1600,"id":"ri5by4","next":260},{"type":"belt","len":3640,"id":"ri5by5","next":260},{"type":"free","qty":5,"dia":80,"pitch":160,"id":"ri5by6","next":160},{"type":"freeNew","qty":1,"dia":80,"pitch":0,"id":"ri5by7","next":160},{"type":"head","qty":1,"dia":63,"pitch":0,"id":"ri5by8","next":200},{"type":"chain","qty":4,"dia":63,"pitch":254,"id":"ri5by9"}],"curtain":null,"sensors":{"entry":{"ref":"ri5by1","edge":"down","off":45},"inlet":{"ref":"ri5by3","edge":"down","off":90},"exit":{"ref":"ri5by7","edge":"down","off":40},"wallIn":{"ref":"ri5by3","edge":"up","off":1400},"wallOut":{"ref":"ri5by8","edge":"down","off":550}}},"base":{"rows":[{"id":"r869618","type":"normal","qty":6,"dia":63,"pitch":254,"next":254},{"type":"free","qty":4,"dia":78,"pitch":304.8,"id":"ri5by12","next":188},{"type":"belt","len":3645,"id":"ri5by13","next":165},{"type":"belt","len":3620,"id":"ri5by14","next":171},{"type":"free","qty":5,"dia":78,"pitch":130,"id":"ri5by15","next":240},{"type":"head","qty":1,"dia":78,"pitch":0,"id":"ri5by16","next":305},{"type":"chain","qty":6,"dia":78,"pitch":305,"id":"ri5by17"}],"curtain":null,"sensors":{"entry":{"ref":"r869618","edge":"down","off":-85},"inlet":{"ref":"ri5by12","edge":"up","off":400},"exit":{"ref":"ri5by15","edge":"down","off":80},"wallIn":{"ref":"ri5by12","edge":"up","off":0},"wallOut":{"ref":"ri5by17","edge":"up","off":273}}}}; /*@@BAKED_DEFAULT@@*/
+const FACTORY_CHAIN = normLayout(DEFAULT_LAYOUT);
+const USER_DEF_KEY = 'fcsim.layout.userdefault';
+function readUserDefault(){
+  try { const o = JSON.parse(localStorage.getItem(USER_DEF_KEY) || 'null'); if (o && o.top && o.base) return normLayout(o); } catch(e) {}
+  try { if (BAKED_DEFAULT && BAKED_DEFAULT.top) return normLayout(BAKED_DEFAULT); } catch(e) {}
+  return null;
+}
+let DEFAULT_CHAIN = readUserDefault() || FACTORY_CHAIN;
+const LS_KEY = 'fcsim.layout.v4';
+let LAYOUT = null;
+try {   // load the saved layout and upgrade it to the current format; any problem → drawing defaults
+  const saved = JSON.parse(localStorage.getItem(LS_KEY) || localStorage.getItem('fcsim.layout.v3') || 'null');
+  if (saved && saved.top && saved.base){
+    LAYOUT = normLayout(saved);
+    for (const k of ['top','base']){ const L = LAYOUT[k];
+      if (!L.rows.length || !['entry','inlet','exit','wallIn','wallOut'].every(s => L.sensors[s] && L.rows.some(r => r.id===L.sensors[s].ref))) throw new Error('bad layout'); }
+  }
+} catch(e) { LAYOUT = null; }
+if (!LAYOUT || !LAYOUT.top || !LAYOUT.base) LAYOUT = JSON.parse(JSON.stringify(DEFAULT_CHAIN));
+const saveLayout = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(LAYOUT)); } catch(e) {} };
+
+/* ---------------- parameters ---------------- */
+const P = {
+  vBaseMM:105, vHighMM:1240, slowRes:0.3125, highRes:0.265, accelPulses:146,
+  batchLimit:170, gapLimit:30, maxSheets:3, chargeLong:470, rampS:0,
+  aTopCtr2:150, cmdDelayS:0.15, runUpPulses:100, runUpBaseS:3.0, runUpTopS:1.5, retardS:1.5,
+  gsBasis:'slow', siemensEntry:'left', mixDrive:'room',
+  tTopStart:'inletOff', tTopStop:'exitOn', tBaseStart:'inletOff', tBaseStop:'exitOn',
+  mitsu:false, interlock:false,
+  tolPulses:3, timerLimit:10.0, timerDebounce:0.3, laneTol:2,
+  rollerWidthMM:2650, pairGapMM:100, sensL:20, sensC:52, sensR:82, glassLeftMM:100, gapCross:2, maxGlassW:96, covMargin:1
+};
+/* parameters saved with Save (only the Parameters-tab keys; same type as the factory value) */
+const PARAM_KEY = 'fcsim.params', FACTORY_P = {...P};
+const applyParams = o => { if (o) for (const k in o) if (k in P && typeof o[k]===typeof P[k]) P[k] = o[k]; };
+/* parameters built into the file by Download HTML; a Save in this browser still wins */
+let BAKED_PARAMS = {"vBaseMM":105,"vHighMM":1240,"slowRes":0.3125,"highRes":0.265,"rampS":0,"accelPulses":146,"aTopCtr2":150,"batchLimit":170,"gapLimit":30,"maxSheets":3,"chargeLong":470,"cmdDelayS":0.15,"runUpPulses":100,"runUpBaseS":3,"runUpTopS":1.5,"retardS":1.5,"gsBasis":"slow","siemensEntry":"left","tTopStart":"inletOff","tTopStop":"exitOn","tBaseStart":"inletOff","tBaseStop":"exitOn","mixDrive":"room","tolPulses":3,"timerLimit":10,"timerDebounce":0.3,"laneTol":2,"rollerWidthMM":2650,"glassLeftMM":100,"sensL":20,"sensC":52,"sensR":82,"pairGapMM":100,"gapCross":2,"maxGlassW":96,"covMargin":1}; /*@@BAKED_PARAMS@@*/
+applyParams(BAKED_PARAMS);
+try { applyParams(JSON.parse(localStorage.getItem(PARAM_KEY) || 'null')); } catch(e) {}
+const PARAM_UI = [
+  ['h','Speeds & encoders'],
+  ['vBaseMM','Base speed (mm/s)'],['vHighMM','High speed (mm/s)'],['slowRes','Slow pulse (in)'],['highRes','High pulse (in)'],['rampS','Base↔High ramp (s)'],
+  ['h','Siemens speed-up logic'],
+  ['accelPulses','Speed-up reference A (slow p) · DB offline 150'],['aTopCtr2','Top counter 2: A hard-coded in FC1 (slow p)'],
+  ['batchLimit','Merge if 1st sheet ≤ (slow p)'],['gapLimit','Wait for next sheet (slow p)'],['maxSheets','Max sheets merged'],['chargeLong','Charge Too Long > (slow p) · DB offline 450'],
+  ['cmdDelayS','Speed-up command delay T20/T40 (s)'],
+  ['runUpPulses','Run-up: high p needed'],['runUpBaseS','Run-up time base T12 (s)'],['runUpTopS','Run-up time top T32 (s)'],['retardS','Retardation time T13 (s)'],
+  ['gsBasis','Gₛ unit',[['slow','Slow pulses (confirmed)'],['high','L/0.265 (workbook tables)']]],
+  ['siemensEntry','Siemens entry sensor',[['left','Entry-LEFT pair'],['any','Any section']]],
+  ['h','In-room timer (per room) — batch = one big sheet'],
+  ['tTopStart','Top: start',[['inletOff','Inlet falling edge (tail leaves Inlet)'],['inletOn','Inlet rising edge (front reaches Inlet)']]],
+  ['tTopStop','Top: stop',[['exitOn','Exit rising edge (front reaches Exit)'],['exitOff','Exit falling edge (tail leaves Exit)']]],
+  ['tBaseStart','Base: start',[['inletOff','Inlet falling edge (tail leaves Inlet)'],['inletOn','Inlet rising edge (front reaches Inlet)']]],
+  ['tBaseStop','Base: stop',[['exitOn','Exit rising edge (front reaches Exit)'],['exitOff','Exit falling edge (tail leaves Exit)']]],
+  ['h','Glass physics'],
+  ['mixDrive','Glass on 2-speed AND chain at once follows',[['room','2-speed element (belt / INV)'],['base','Chain conveyor'],['more','Whichever it touches over a longer length']]],
+  ['h','Mitsubishi layer (only when enabled)'],
+  ['tolPulses','Length tolerance ± (slow p)'],['timerLimit','Speed-up limit Inlet→Exit (s)'],['timerDebounce','Timer edge OFF-delay (s)'],['laneTol','Lane mismatch allowance (in)'],
+  ['h','Across the line'],
+  ['rollerWidthMM','Roller width (mm)'],['glassLeftMM','Glass left edge from roller left edge (mm, ≈)'],
+  ['sensL','Sensor L (right one of pair) from glass left edge (in)'],['sensC','Sensor C (right one of pair) from glass left edge (in)'],['sensR','Sensor R (right one of pair) from glass left edge (in)'],
+  ['pairGapMM','Gap between the 2 sensors of a pair (mm)'],['gapCross','Gap between sheets across (in, ≤ fits 96 in)'],['maxGlassW','Max glass width (in)'],['covMargin','Sensor needs glass this far past beam (in) *']
+];
+/* sim defaults the line has not confirmed yet → item numbers in info/PLC_online_checklist.csv (MIRROR-Line-Logic.md §0) */
+const UNCONF = { accelPulses:'#1–4', aTopCtr2:'#1–4', chargeLong:'#11–12', runUpBaseS:'#23', vBaseMM:'#51–53', vHighMM:'#51–53', rampS:'#51–53',
+  siemensEntry:'#54–55', slowRes:'#56–57', highRes:'#56–57' };
+const uncTag = k => UNCONF[k] ? `<b class="unc" title="Not confirmed on the line yet: sim default. Read it online, info/PLC_online_checklist.csv ${UNCONF[k]}">check ${UNCONF[k]}</b>` : '';
+
+/* ---------------- recipe ---------------- */
+const R = {}; let HMI = {};
+/* lateral coordinate y (inch): 0 = roller centre line, negative = LEFT side (facing flow) */
+const SEC = ['LEFT','CENTER','RIGHT'], SECY = {}, POS = ['ENTRY','INLET','EXIT'];
+const RWin = () => P.rollerWidthMM*MM2IN, HW = () => RWin()/2;
+const glassRef = () => P.glassLeftMM*MM2IN - HW();     // y of the glass left loading reference
+const sensY = (sc, ab) => ab==='B' ? SECY[sc] : SECY[sc] - P.pairGapMM*MM2IN;   // B = right sensor at the stated distance
+function updateSECY(){ const g0 = glassRef(); SECY.LEFT = g0 + P.sensL; SECY.CENTER = g0 + P.sensC; SECY.RIGHT = g0 + P.sensR; }
+updateSECY();
+const secOn = sc => (HMI.on || '123').includes(String(SEC.indexOf(sc)+1));
+const hmiFrom = r => ({ name:r.name, len:r.len, on: r.on || coverage(r) });
+function presetToR(i, T=R){
+  const pr = PRESETS[i];
+  Object.assign(T,{name:pr.name, w:pr.w, len:pr.len, nAcross:pr.nAcross, nLen:pr.nLen, align:pr.align, on:pr.on, gapX:2, gapY:10, n:0});
+}
+function lateral(r){
+  const n = r.nAcross, w = r.w, L0 = glassRef();          // left loading reference
+  // cross gap: nominal, but never wider than what fits in the max glass width (24×4 and 48×2 end up with 0)
+  let gap = n>1 ? Math.max(0, Math.min(P.gapCross, (P.maxGlassW - n*w)/(n-1))) : 0, start = L0;
+  if (r.align==='split' && n>1) gap = Math.max(0, (P.maxGlassW - n*w)/(n-1));   // spread over the max glass width
+  else if (r.align==='center') start = -(n*w + (n-1)*gap)/2;
+  return Array.from({length:n}, (_,c) => [start + c*(w+gap), start + c*(w+gap) + w]);
+}
+function coverage(r){
+  const lanes = lateral(r), m = P.covMargin;
+  const hit = y => lanes.some(([a,b]) => a + m <= y && b - m >= y);
+  return SEC.map((sc,i) => hit(sensY(sc,'A')) && hit(sensY(sc,'B')) ? String(i+1) : '').join('');   // both sensors of the pair
+}
+const sizeSig = r => [r.w, r.len, r.nAcross, r.nLen, r.align, r.gapX, r.gapY].map(String).join('|');
+const formSize = () => ({ w:+$('#rW').value, len:+$('#rLen').value, nAcross:Math.max(1,Math.round(+$('#rAcross').value)), nLen:Math.max(1,Math.round(+$('#rNLen').value)),
+  align:$('#rAlign').value, gapX:+$('#rGapX').value, gapY:+$('#rGapY').value });
+function rFromForm(){
+  R.w=+$('#rW').value; R.len=+$('#rLen').value; R.n=Math.max(0,Math.round(+$('#rN').value));
+  R.nAcross=Math.max(1,Math.round(+$('#rAcross').value)); R.nLen=Math.max(1,Math.round(+$('#rNLen').value)); R.align=$('#rAlign').value;
+  R.gapX=+$('#rGapX').value; R.gapY=+$('#rGapY').value;
+  const p = $('#preset').value;
+  R.name = p==='custom' ? `Custom ${R.w}×${R.len} · ${R.nAcross}×${R.nLen}` : PRESETS[+p].name;
+  R.on = p==='custom' ? '' : PRESETS[+p].on;
+}
+function rToForm(T=R){
+  $('#rW').value=T.w; $('#rLen').value=T.len; $('#rN').value=T.n; $('#rAcross').value=T.nAcross; $('#rNLen').value=T.nLen;
+  $('#rAlign').value=T.align; $('#rGapX').value=T.gapX; $('#rGapY').value=T.gapY;
+}
+const lNet = r => r.nLen*r.len + (r.nLen-1)*r.gapX;
+
+/* ---------------- geometry from layout ---------------- */
+let room = 'top', G;
+function geom(){
+  const L = LAYOUT[room], A = P.accelPulses*P.slowRes, pos = positions(L);
+  const rows = L.rows.map((r,i) => ({...r, start:pos[i][0], span: pos[i]}));
+  const zones = rows.map(r => ({a:r.span[0]*MM2IN, b:r.span[1]*MM2IN, drive:TYPES[r.type].drive, type:r.type}));
+  const belts = rows.filter(r=>r.type==='belt').sort((a,b)=>a.span[0]-b.span[0]);
+  let curtain = null;   // always the centre of the belt gap (any saved manual value is ignored)
+  if (curtain==null){
+    curtain = belts.length>=2 ? (belts[0].span[1] + belts[1].span[0])/2 : belts.length ? (belts[0].span[0]+belts[0].span[1])/2 : 0;
+  }
+  const rollers = [];
+  for (const r of rows){
+    if (r.type==='belt') continue;
+    const q = Math.max(1, Math.round(+r.qty||1));
+    for (let i=0;i<q;i++){ const a = (+r.start + i*(+r.pitch||0))*MM2IN; rollers.push({a, b:a + (+r.dia||0)*MM2IN, type:r.type}); }
+  }
+  const inlet = sensorAt(L,'inlet',pos) ?? 0, exit = sensorAt(L,'exit',pos) ?? 0;
+  return { A, inlet:inlet*MM2IN, exit:exit*MM2IN, curtain:curtain*MM2IN,
+    wallIn:(sensorAt(L,'wallIn',pos) ?? 0)*MM2IN, wallOut:(sensorAt(L,'wallOut',pos) ?? 0)*MM2IN, zones, rollers,
+    belts: belts.map(b=>({a:b.span[0]*MM2IN, b:b.span[1]*MM2IN})),
+    viewX0: (Math.min(-300, ...rows.map(r=>r.span[0])) - 150)*MM2IN,
+    vB: P.vBaseMM*MM2IN, vH: P.vHighMM*MM2IN };
+}
+function driveAt(tail, front){
+  let rl=0, bl=0;
+  for (const z of G.zones){ const ov = Math.min(z.b, front) - Math.max(z.a, tail); if (ov > 0){ if (z.drive==='room') rl += ov; else if (z.drive==='base') bl += ov; } }
+  if (!rl && !bl) return 'free'; if (!rl) return 'base'; if (!bl) return 'room';
+  return P.mixDrive==='room' ? 'room' : P.mixDrive==='base' ? 'base' : (rl >= bl ? 'room' : 'base');
+}
+const timerCfg = () => room==='top' ? {start:P.tTopStart, stop:P.tTopStop} : {start:P.tBaseStart, stop:P.tBaseStop};
+const TLBL = {inletOff:'Inlet ↓', inletOn:'Inlet ↑', exitOn:'Exit ↑', exitOff:'Exit ↓'};
+function kFor(gs){ for (const [th,k] of K_TABLE[room]) if (gs>=th) return k; return 115; }
+
+/* FC0/FC1 setpoints from the sheets measured by FC2..FC5 (slow pulses). FC84 divides integers → /3 rounds down.
+   up = slow p from 1st front edge to the speed-up, Xp = high p from the speed-up command back to base. */
+function plcCalc(lens, gaps, ctr = 1){
+  const n = lens.length, first = lens[0], last = lens[n-1], sum = a => a.reduce((s,v)=>s+v, 0);
+  // FC2/FC3: with 3 sheets the PLC adds L3 twice and never L2 (harmless when the sheets are equal)
+  const overall = n===3 ? first + 2*last + gaps[0] + gaps[1] : sum(lens) + sum(gaps);
+  const A = room==='top' && ctr===2 ? P.aTopCtr2 : P.accelPulses;   // FC1 counter 2 has 150 hard-coded
+  const up = A + overall - Math.floor(last/3);
+  const u = P.gsBasis==='slow' ? 1 : P.slowRes/P.highRes, f = Math.round(first*u), o = Math.round(overall*u);
+  const K = kFor(f), Xp = 1110 - o + 2*Math.floor(f/3) - K;
+  return { overall, first, last, A, up, K, Xp };
+}
+
+/* formula prediction for one size — glass FRONT positions, inches from Entry */
+function predict(r){
+  const sheetP = Math.round(r.len/P.slowRes), gapP = Math.round(r.gapX/P.slowRes), span = lNet(r);
+  const c = plcCalc(Array(r.nLen).fill(sheetP), Array(r.nLen-1).fill(gapP));
+  const Ln = c.overall*P.slowRes, Gs = c.overall, K = c.K, Xp = c.Xp, Xin = Xp*P.highRes;
+  /* the PLC knows L only when the load is closed: at the last OFF (1st sheet > 170 p or max sheets) or 30 p after it */
+  const closesAtOff = (r.nLen===1 && sheetP > P.batchLimit) || r.nLen >= P.maxSheets;
+  const known = span + (closesAtOff ? 0 : (P.gapLimit+1)*P.slowRes);
+  const ideal = c.up*P.slowRes, accel = Math.max(ideal, known) + G.vB*P.cmdDelayS, decel = accel + Xin;
+  const W = G.exit - G.inlet, b1 = clamp(accel - G.inlet, 0, W), he = clamp(decel - G.inlet, 0, W);
+  const th = (b1 + (W-he))/G.vB + (he-b1)/G.vH;
+  const cfg = timerCfg();
+  const xs = cfg.start==='inletOff' ? G.inlet + span : G.inlet, xe = cfg.stop==='exitOn' ? G.exit : G.exit + span;
+  const travel = (x0,x1) => { if (x1 <= x0) return null; const h = Math.max(0, Math.min(x1,decel) - Math.max(x0,accel)); return (x1-x0-h)/G.vB + h/G.vH; };
+  const inRoom = travel(xs, xe), hiT = Xin/G.vH;
+  let hiLen = 0, tot = 0;
+  for (let row=0; row<r.nLen; row++){ const d0 = row*(r.len+r.gapX), d1 = d0 + r.len;
+    tot += r.len; hiLen += Math.max(0, Math.min(d1, decel - G.curtain) - Math.max(d0, accel - G.curtain)); }
+  return { Ln, Gs, L1:c.first, up:c.up, K, Xp, Xin, accel, decel, late: known > ideal + 0.01, th, inRoom, hiT, cov: tot ? clamp(hiLen/tot*100,0,100) : 0 };
+}
+
+/* ---------------- state ---------------- */
+let S, F = { hEncDead:false, vfdNoResp:false, vfdStuckHigh:false, stuck:new Set() };
+function posX(p){ return p==='ENTRY'?0 : p==='INLET'?G.inlet : G.exit; }
+function newState(){
+  S = { t:0, run:true, stopReq:null,
+    roomV:G.vB, cmd:'BASE', prevCmd:'BASE', cmdT:0, cmdEp:0, cmdH:0, hRate:G.vB/P.highRes,
+    enc:{s1:0,s2:0,h:0}, beltPos:0,
+    sheets:[], sid:1, lid:1, loads:[], lastLoad:null, pendOverlap:false, pendMissing:false,
+    sens:{}, cov:{}, trend:[], lastTrend:-1, latched:new Set(), log:[], logDirty:true,
+    M:{prev:{}, onAt:{}, fifo:{}, dis:{}, inPrev:false, exPrev:false, tq:[]},
+    SI:{prev:false, open:null, loads:[], id:1, cmd:'BASE'}
+  };
+  for (const s of SEC) S.M.fifo[s] = [];
+}
+function log(level, src, msg, key){
+  if (key){ if (S.latched.has(key)) return false; S.latched.add(key); }
+  S.log.unshift({t:S.t, level, src, msg}); if (S.log.length>300) S.log.pop(); S.logDirty = true; return true;
+}
+function stopNow(){ if (S.run) S.stopT = S.t; S.run=false; S.stopReq=null; }
+function requestFinishStop(){ if (S.run) S.stopReq='finish'; }
+function hardM(msg, key){ if (log('HARD','MITSU',msg,key) && P.interlock) stopNow(); }
+function siemensAlarm(msg, key){ if (log('HARD','SIEMENS',msg,key) && P.interlock) requestFinishStop(); }
+const mm = inch => Math.round(inch*IN2MM);
+const fmtRel = inch => (inch>=0?'+':'−') + Math.abs(mm(inch)) + ' mm';
+
+/* ---------------- spawning & faults ---------------- */
+const fmtClock = t => { t = Math.max(0, t); const m = Math.floor(t/60), s2 = Math.floor(t%60); return `${m}:${String(s2).padStart(2,'0')}`; };
+function spawn(){
+  if (R.n>0 && S.loads.length>=R.n) return;
+  if (S.jobUntil && S.t < S.jobUntil) return;                 // job change: nothing fed
+  const last = S.lastLoad, x0 = G.viewX0 - 30; let front, stackOn = null;
+  if (!last) front = x0;
+  else {
+    const tail = Math.min(...last.sheets.map(s=>s.x-s.len));
+    if (tail - R.gapY < x0 - 40) return;
+    front = Math.min(x0, tail - R.gapY);                     // after a pause, start again at the infeed
+    if (S.pendOverlap){ front = tail + 10; S.pendOverlap=false; stackOn = new Set(last.sheets.map(s=>s.id));
+      log('INFO','SIM',`Fault: load ${S.lid} overlaps previous load by 10 in`); }
+  }
+  const r = {...R}, lanes = lateral(r);
+  const L = { id:S.lid++, r, p:predict(r), sheets:[] };
+  for (let row=0; row<r.nLen; row++) for (let c=0; c<r.nAcross; c++){
+    const n = Math.ceil(r.len);
+    const sh = { id:S.sid++, load:L, row, col:c, x: front - row*(r.len+r.gapX), len:r.len, n,
+      y0: lanes[c][0], y1: lanes[c][1], coat:new Float32Array(n), prevX:0, v:G.vB, vc:G.vB,
+      tIn:null, tEx:null, stackOn, sl:null };
+    sh.prevX = sh.x; L.sheets.push(sh); S.sheets.push(sh);
+  }
+  if (S.pendMissing && r.nAcross > 1){ S.pendMissing = false;
+    const gone = L.sheets.filter(sh => sh.col === r.nAcross-1 && sh.row === 0);
+    L.sheets = L.sheets.filter(sh => !gone.includes(sh)); S.sheets = S.sheets.filter(sh => !gone.includes(sh));
+    log('INFO','SIM',`Fault: load ${L.id} missing sheet in lane ${r.nAcross}`); }
+  S.loads.push(L); S.lastLoad = L;
+}
+function breakGlass(){
+  const cand = S.sheets.filter(s=>s.x>G.inlet && s.x-s.len<G.exit && !s.broken).sort((a,b)=>b.x-a.x)[0]
+            || S.sheets.filter(s=>s.x>0 && !s.broken).sort((a,b)=>b.x-a.x)[0];
+  if (!cand){ log('INFO','SIM','No glass on line to break'); return; }
+  const half = cand.len/2, n1 = Math.ceil(half);
+  const rear = {...cand, id:S.sid++, x: cand.x - half - 4, len: cand.len-half, n: Math.ceil(cand.len-half),
+    coat: cand.coat.slice(Math.floor(half)), broken:true, tIn:null, tEx:null};
+  rear.prevX = rear.x; cand.len = half; cand.n = n1; cand.coat = cand.coat.slice(0,n1); cand.broken = true;
+  cand.load.sheets.push(rear); S.sheets.push(rear);
+  log('INFO','SIM',`Fault: sheet in load ${cand.load.id} broken (4 in gap)`);
+}
+
+/* ---------------- simulation step ---------------- */
+function step(dt){
+  const g = G; S.t += dt;
+  if (S.run){
+    let target = S.cmd==='HIGH' ? g.vH : g.vB;
+    if (F.vfdNoResp) target = g.vB;
+    if (F.vfdStuckHigh && S.roomV >= g.vH*0.98) target = g.vH;
+    if (S.roomV < g.vB*0.5) S.roomV = g.vB;
+    if (P.rampS<=0) S.roomV = target;
+    else { const a = (g.vH-g.vB)/P.rampS*dt; S.roomV += clamp(target-S.roomV, -a, a); }
+  } else S.roomV = 0;
+  const chainV = S.run ? g.vB : 0;
+
+  S.enc.s1 += chainV*dt/P.slowRes; S.enc.s2 += chainV*dt/P.slowRes;
+  const hInst = F.hEncDead ? 0 : S.roomV/P.highRes;
+  S.enc.h += hInst*dt; S.hRate += (hInst - S.hRate)*Math.min(1, dt/0.12);
+  S.beltPos += S.roomV*dt;
+
+  for (const s of S.sheets){
+    const d = driveAt(s.x - s.len, s.x);
+    let v;
+    if (!S.run) v = 0;
+    else if (d==='room') v = S.roomV;
+    else if (d==='base') v = chainV;
+    else v = s.vc;                       // only on free rollers: keeps its own speed
+    if (S.run) s.vc = v;
+    s.drive = d; s.v = v; s.prevX = s.x; s.x += v*dt;
+  }
+  for (const r of g.rollers){   // roller surface speed: driven rows follow their drive, free rollers turn only under moving glass
+    const drv = TYPES[r.type].drive;
+    let v = drv==='room' ? S.roomV : drv==='base' ? chainV : 0;
+    if (drv==='free') for (const s of S.sheets) if (s.x > r.a && s.x - s.len < r.b) v = Math.max(v, s.v||0);
+    // visual stripe rate (stripes/s), compressed so base ≈ 1/s and high stays readable
+    r.v = v; r.phase = ((r.phase||0) + (v > 1e-3 ? Math.min(3, 1.0*Math.sqrt(v/g.vB)) : 0)*dt) % 1;
+  }
+  const sorted = [...S.sheets].sort((a,b)=>b.x-a.x);
+  for (let i=1;i<sorted.length;i++){
+    const s = sorted[i];
+    for (let j=0;j<i;j++){
+      const o = sorted[j];
+      if (o.y1<=s.y0 || o.y0>=s.y1) continue;
+      if ((s.stackOn && s.stackOn.has(o.id)) || (o.stackOn && o.stackOn.has(s.id))) continue;
+      const oTail = o.x - o.len;
+      if (s.x > oTail && s.prevX <= oTail + 0.6){
+        s.x = oTail; s.v = Math.min(s.v, o.v); s.vc = s.v;
+        log('SOFT','MOTION',`Glass contact: L${s.load.id} caught up with L${o.load.id}`, 'contact'+s.id);
+      }
+    }
+  }
+  for (const s of S.sheets){
+    if (s.x >= g.curtain && s.prevX - s.len < g.curtain){
+      const d0 = Math.max(0, Math.floor(s.prevX - g.curtain)), d1 = Math.min(s.n-1, Math.floor(s.x - g.curtain));
+      for (let d=d0; d<=d1; d++) if (!s.coat[d]) s.coat[d] = Math.max(s.v, 1e-3);
+    }
+    if (s.prevX < g.inlet && s.x >= g.inlet) s.tIn = S.t;
+    if (s.prevX < g.exit && s.x >= g.exit) s.tEx = S.t;
+    const L = s.sl, tl = s.x - s.len, ptl = s.prevX - s.len;
+    if (L){   // the whole merged load is treated as one big sheet
+      if (s.prevX < g.inlet && s.x >= g.inlet && L.tInOn==null) L.tInOn = S.t;
+      if (ptl < g.inlet && tl >= g.inlet && ++L.nInOff === L.nPhys) L.tInOff = S.t;
+      if (s.prevX < g.exit && s.x >= g.exit && L.tExOn==null) L.tExOn = S.t;
+      if (ptl < g.exit && tl >= g.exit && ++L.nExOff === L.nPhys) L.tExOff = S.t;
+      roomTimer(L);
+    }
+  }
+  if (S.jobUntil && S.t >= S.jobUntil){ S.jobUntil = 0; log('MOTION','HMI',`Job change finished — feeding ${R.name}`); }
+  spawn();
+  const xEnd = Math.max(g.exit, g.wallOut) + 160;
+  S.sheets = S.sheets.filter(s => s.x - s.len < xEnd);
+
+  for (const p of POS){
+    const px = posX(p);
+    for (const sc of SEC){
+      const covAt = cy => S.sheets.some(s => s.x >= px && s.x - s.len < px && s.y0 + P.covMargin <= cy && s.y1 - P.covMargin >= cy);
+      const cA = covAt(sensY(sc,'A')), cB = covAt(sensY(sc,'B'));
+      S.cov[p+sc] = cA || cB;
+      S.sens[`${p}-${sc}-A`] = cA && !F.stuck.has(`${p}-${sc}-A`);
+      S.sens[`${p}-${sc}-B`] = cB && !F.stuck.has(`${p}-${sc}-B`);
+    }
+  }
+  if (P.mitsu) mitsubishi(dt);
+  siemens();
+
+  if (S.stopReq==='finish' && !S.SI.loads.some(L=>L.state==='HIGH')) stopNow();
+  S.cmd = S.run ? S.SI.cmd : 'BASE';
+  if (S.cmd !== S.prevCmd){ S.prevCmd = S.cmd; S.cmdT = 0; S.cmdEp++; S.cmdH = S.enc.h; } else S.cmdT += dt;
+  if (S.run){
+    /* FC10/FC12: run-up = high command but < 100 high p within T12 (base) / T32 (top); retardation = base command but still high after T13 */
+    const runUpS = room==='top' ? P.runUpTopS : P.runUpBaseS;
+    if (S.cmd==='HIGH' && S.cmdT>runUpS && S.enc.h - S.cmdH < P.runUpPulses)
+      siemensAlarm(`RUN-UP FAULT: high speed commanded, < ${P.runUpPulses} high p in ${runUpS} s`, 'ru'+S.cmdEp);
+    if (S.cmd==='BASE' && S.cmdT>P.retardS && S.hRate > 2*g.vB/P.highRes)
+      siemensAlarm(`RETARDATION FAULT: base commanded, feedback still high after ${P.retardS} s`, 'rt'+S.cmdEp);
+  }
+  if (S.t - S.lastTrend >= 0.05){
+    S.lastTrend = S.t;
+    S.trend.push({t:S.t, v:S.roomV/MM2IN, c: S.cmd==='HIGH'?P.vHighMM:P.vBaseMM, run:S.run});
+    if (S.trend.length>1200) S.trend.splice(0, 200);
+  }
+}
+
+/* ---------------- Siemens: measure, merge, speed-up, back to base ---------------- */
+function roomTimer(L){
+  if (L.inRoom != null) return;
+  const cfg = timerCfg(), t0 = cfg.start==='inletOff' ? L.tInOff : L.tInOn, t1 = cfg.stop==='exitOn' ? L.tExOn : L.tExOff;
+  if (t0 == null || t1 == null) return;
+  if (t1 < t0){ L.inRoom = NaN; log('SOFT','MOTION',`S${L.id} in-room timer: ${TLBL[cfg.stop]} came before ${TLBL[cfg.start]}`); return; }
+  L.inRoom = t1 - t0;
+  log('MOTION','MOTION',`S${L.id} IN ROOM ${L.inRoom.toFixed(2)} s (${TLBL[cfg.start]} → ${TLBL[cfg.stop]})${L.tDecel!=null&&L.tAccel!=null?` · high speed ${(L.tDecel-L.tAccel).toFixed(2)} s`:''}`);
+}
+function frontOf(L){ let m = null; for (const s of S.sheets) if (s.sl===L && (m===null || s.x > m)) m = s.x; return m; }
+function siemens(){
+  const SI = S.SI, c = Math.floor(S.enc.s1);
+  const sig = P.siemensEntry==='left'
+    ? (S.sens['ENTRY-LEFT-A'] || S.sens['ENTRY-LEFT-B'])
+    : SEC.some(sc => S.sens[`ENTRY-${sc}-A`] || S.sens[`ENTRY-${sc}-B`]);
+  const attach = L => { for (const sh of S.sheets) if (sh.prevX < 0.6 && sh.x >= -0.01 && !sh.sl){ sh.sl = L; L.nPhys = (L.nPhys||0) + 1; } };
+
+  if (sig && !SI.prev){
+    const o = SI.open; let joined = false;
+    if (o && !o.final){
+      const last = o.sheets[o.sheets.length-1];
+      /* FC2: only the 1st sheet is checked against 170 p; a 2nd sheet joins on the gap alone */
+      if (c - o.lastOff <= P.gapLimit && (o.sheets.length > 1 || last.p <= P.batchLimit) && o.sheets.length < P.maxSheets){ o.sheets.push({on:c}); joined = true; attach(o); }
+      if (!joined) finalize(o);
+    }
+    if (!joined){
+      /* FC0/FC1 have 2 counters; one is free again at its speed-up. A front edge with both busy is not measured. */
+      const busy = SI.loads.filter(L => L.state==='MEAS' || L.state==='WAIT');
+      if (busy.length >= 2){ SI.open = null;
+        log('SOFT','SIEMENS',`Front edge at ${c} p ignored: both counters busy (${busy.map(L=>'S'+L.id).join(', ')}) — this glass gets no speed-up of its own`); }
+      else { const n = {id:SI.id++, ctr: busy.some(L=>L.ctr===1) ? 2 : 1, sheets:[{on:c}], firstOn:c, lastOff:null, final:false, state:'MEAS', nPhys:0, nInOff:0, nExOff:0};
+        SI.open = n; SI.loads.push(n); attach(n); }
+    }
+  }
+  if (!sig && SI.prev && SI.open && !SI.open.final){
+    const o = SI.open, sh = o.sheets[o.sheets.length-1];
+    sh.off = c; sh.p = c - sh.on; o.lastOff = c;
+    if ((o.sheets.length===1 && sh.p > P.batchLimit) || o.sheets.length >= P.maxSheets) finalize(o);
+  }
+  if (SI.open && !SI.open.final){
+    const o = SI.open;
+    if (c - o.firstOn > P.chargeLong && !o.ctl){ o.ctl = true;
+      log('HARD','SIEMENS',`CHARGE TOO LONG: load S${o.id} > ${P.chargeLong} slow p — line stopped`); stopNow(); }
+    if (!sig && o.lastOff!=null && c - o.lastOff > P.gapLimit) finalize(o);
+  }
+  SI.prev = sig;
+
+  for (const L of SI.loads){
+    if (L.state==='WAIT' && c >= L.accelTarget){
+      L.state='ARM'; L.tArm=S.t; L.late = c - L.accelTarget;      // T20/T40: command follows the setpoint after 150 ms
+    }
+    if (L.state==='ARM' && S.t - L.tArm >= P.cmdDelayS - 1e-9){
+      if (SI.loads.some(o=>o!==L && o.state==='HIGH')) log('SOFT','MOTION',`S${L.id} speeds up while another load is still at high speed (design expects one at a time)`);
+      L.state='HIGH'; L.hAt=S.enc.h; L.tAccel=S.t; L.frontAtAccel = frontOf(L);
+      log('MOTION','MOTION',`S${L.id} SPEED-UP · front ${L.frontAtAccel!=null?mm(L.frontAtAccel)+' mm from Entry ('+fmtRel(L.frontAtAccel-G.inlet)+' vs Inlet)':'?'}${L.late>2?` · ${L.late} p late (L known only at Entry OFF)`:''}`);
+    } else if (L.state==='HIGH' && S.enc.h - L.hAt >= L.Xp){
+      L.state='DONE'; L.tDecel=S.t; L.frontAtDecel = frontOf(L);
+      log('MOTION','MOTION',`S${L.id} BACK TO BASE · front ${L.frontAtDecel!=null?mm(L.frontAtDecel)+' mm from Entry ('+fmtRel(L.frontAtDecel-G.exit)+' vs Exit)':'?'}`);
+    }
+  }
+  SI.cmd = SI.loads.some(L=>L.state==='HIGH') ? 'HIGH' : 'BASE';
+  if (SI.loads.length > 40) SI.loads = SI.loads.filter((L,i)=> L.state!=='DONE' || i > SI.loads.length-15);
+}
+function finalize(o){
+  o.final = true;
+  const lens = o.sheets.map(s => s.p||0), gaps = o.sheets.slice(1).map((s,i) => s.on - o.sheets[i].off);
+  const c = plcCalc(lens, gaps, o.ctr);
+  o.Lp = c.overall; o.Lin = c.overall*P.slowRes; o.L1 = c.first;
+  o.K = c.K; o.Xp = c.Xp;
+  o.accelTarget = o.firstOn + c.up; o.upIn = c.up*P.slowRes;
+  o.state = 'WAIT';
+  log('INFO','SIEMENS',`S${o.id} closed (counter ${o.ctr}): ${o.sheets.length} sheet(s), L ${c.overall} p = ${o.Lin.toFixed(1)} in, 1st ${c.first} p → K ${o.K}, speed-up at ${c.up} p, X ${o.Xp} hp = ${mm(o.Xp*P.highRes)} mm`);
+}
+
+/* ---------------- Mitsubishi layer (optional) ---------------- */
+function mitsubishi(dt){
+  const M = S.M, tol = P.tolPulses;
+  for (const sc of SEC) if (!secOn(sc)) for (const p of POS){ const k = p+sc; M.prev[k] = false; M.onAt[k] = null; M.dis[k] = 0; M.fifo[sc] = []; }
+  for (const p of POS) for (const sc of SEC.filter(secOn)){
+    const a = S.sens[`${p}-${sc}-A`], b = S.sens[`${p}-${sc}-B`], k = p+sc;
+    if (a !== b){ M.dis[k] = (M.dis[k]||0) + dt;
+      if (M.dis[k] > 0.15) log('SOFT','MITSU',`Sensor fault ${p}-${sc}-${a?'B':'A'} (pair disagrees)`, 'soft'+p+sc+(a?'B':'A'));
+    } else M.dis[k] = 0;
+    if (S.cov[k] && F.stuck.has(`${p}-${sc}-A`) && F.stuck.has(`${p}-${sc}-B`)) hardM(`SENSOR PAIR LOST ${p}-${sc}`, 'pair'+k);
+  }
+  const en = SEC.filter(secOn);
+  if (en.length > 1) for (const p of POS){
+    const px = posX(p), k = 'lane'+p;
+    const sig = en.map(sc => S.sens[`${p}-${sc}-A`] || S.sens[`${p}-${sc}-B`]);
+    const sh = S.sheets.find(s => s.x >= px && s.x - s.len < px), v = sh ? sh.v : 0;
+    if (sig.some(Boolean) && !sig.every(Boolean)){
+      M[k] = (M[k]||0) + v*dt;
+      if (M[k] > P.laneTol && !M[k+'f']){ M[k+'f'] = true; hardM(`LANE MISMATCH ${p}: ${en.map((sc,i)=>sc+(sig[i]?' ON':' off')).join(' / ')}`, k + S.t.toFixed(2)); }
+    } else { M[k] = 0; M[k+'f'] = false; }
+  }
+  for (const p of ['ENTRY','EXIT']) for (const sc of SEC.filter(secOn)){
+    const sig = S.sens[`${p}-${sc}-A`] || S.sens[`${p}-${sc}-B`], k = p+sc;
+    const enc = Math.floor(p==='ENTRY' ? S.enc.s1 : S.enc.s2);
+    if (sig && !M.prev[k]) M.onAt[k] = enc;
+    if (!sig && M.prev[k] && M.onAt[k]!=null){
+      const pulses = enc - M.onAt[k];
+      if (p==='ENTRY'){
+        const rp = Math.round(HMI.len / P.slowRes);
+        M.fifo[sc].push({entry:pulses, recipe:rp});
+        if (Math.abs(rp - pulses) > tol) hardM(`LENGTH ${sc}: Recipe ${rp} p vs Entry ${pulses} p`, 'lenE'+S.t.toFixed(2)+sc);
+      } else {
+        const e = M.fifo[sc].shift();
+        if (!e) hardM(`LENGTH ${sc}: Exit piece ${pulses} p with no Entry record`, 'lenX'+S.t.toFixed(2)+sc);
+        else if (Math.abs(e.recipe - pulses) > tol || Math.abs(e.entry - pulses) > tol)
+          hardM(`LENGTH ${sc}: Recipe ${e.recipe} / Entry ${e.entry} / Exit ${pulses} p`, 'lenX'+S.t.toFixed(2)+sc);
+      }
+    }
+    M.prev[k] = sig;
+  }
+  const deb = (raw, key) => { if (raw){ M[key+'off']=0; return true; } M[key+'off']=(M[key+'off']||0)+dt; return M[key+'off'] < P.timerDebounce && M[key+'st']; };
+  const inAny = deb(SEC.filter(secOn).some(sc => S.sens[`INLET-${sc}-A`] || S.sens[`INLET-${sc}-B`]), 'in');
+  const exAny = deb(SEC.filter(secOn).some(sc => S.sens[`EXIT-${sc}-A`] || S.sens[`EXIT-${sc}-B`]), 'ex');
+  M.inst = inAny; M.exst = exAny;
+  if (inAny && !M.inPrev) M.tq.push(S.t);
+  if (exAny && !M.exPrev){ const t0 = M.tq.shift();
+    if (t0 != null && S.t - t0 > P.timerLimit) hardM(`SPEED-UP CHECK: Inlet→Exit ${(S.t-t0).toFixed(2)} s > ${P.timerLimit} s`, 'su'+S.t.toFixed(2)); }
+  M.inPrev = inAny; M.exPrev = exAny;
+}
+
+/* ---------------- rendering ---------------- */
+const cv = $('#cv'), ctx = cv.getContext('2d'), tr = $('#tr'), tctx = tr.getContext('2d');
+let C = {}, VIEW = null;
+function readColors(){ const cs = getComputedStyle(document.documentElement);
+  for (const k of ['ink','muted','faint','line','line2','base','high','alarm','ok','soft','glass','glassB','glassEdge','free','normal','chain','head','inv','belt','beltDark','freeNew','room','canvas','panel'])
+    C[k] = cs.getPropertyValue('--'+k).trim(); }
+/* real paint colours: base paint = orange, top paint = blue-grey (also the room accent colours) */
+const PAINT = { base:'#FF7032', top:'#7EA6B4' };
+const paintCol = () => PAINT[room];
+const thickCol = () => mix(PAINT[room], '#000000', 0.45);
+/* hatch lines that stay visible on a dark or a light fill */
+const hatchOn = rgb => { const v = (rgb.match(/\d+/g) || [0,0,0]).slice(0,3).map(Number); return (v[0]*.299 + v[1]*.587 + v[2]*.114) < 110 ? 'rgba(255,255,255,.45)' : 'rgba(0,0,0,.4)'; };
+/* uncoated glass per room: silver before base paint, base-painted (light red) before top paint */
+const bareCol  = () => room==='top' ? PAINT.base : C.glassB;   // glass entering the top room already carries base paint
+const bareEdge = () => mix(bareCol(), '#000000', 0.4);
+const paintEdge = () => mix(paintCol(), '#000000', 0.4);
+function paintLegend(){
+  const p = paintCol(), t = thickCol();
+  $('#lgBare').style.background = bareCol(); $('#lgBare').style.borderColor = bareEdge();
+  $('#lgBareName').textContent = room==='top' ? 'Before top paint (base-painted)' : 'Before base paint (silver)';
+  $('#lgPaint').style.background = p;
+  $('#lgThick').style.background = `repeating-linear-gradient(135deg, ${t} 0 3px, ${hatchOn(t)} 3px 4px)`;
+  $('#lgPaintName').textContent = room==='top' ? 'Top paint' : 'Base paint';
+}
+function mix(a,b,t){ const pa=hex(a), pb=hex(b); return `rgb(${pa.map((v,i)=>Math.round(v+(pb[i]-v)*t)).join(',')})`; }
+function hex(h){ h=h.replace('#',''); if(h.length===3) h=h.split('').map(x=>x+x).join(''); return [0,2,4].map(i=>parseInt(h.substr(i,2),16)); }
+function fit(canvas, h){
+  const dpr = window.devicePixelRatio||1, w = canvas.clientWidth;
+  if (canvas.width !== Math.round(w*dpr) || canvas.height !== Math.round(h*dpr)){ canvas.width=Math.round(w*dpr); canvas.height=Math.round(h*dpr); canvas.style.height=h+'px'; }
+  return {w,h,dpr};
+}
+/* plan views: stretched across the line to fill the box, or true 1:1 scale (box height follows the width) */
+let trueScale = true; try { trueScale = localStorage.getItem('fcsim.trueScale')!=='0'; } catch(e) {}
+const viewH = (W0, x0, x1, pad, fill) => trueScale ? Math.max(150, pad + (2*HW()+10)*W0/(x1-x0)) : fill;
+function syncScaleBtn(){ const b = $('#scaleBtn'); b.textContent = trueScale ? '1:1 true scale · click to stretch ↕' : '↕ stretched · click for 1:1'; b.classList.toggle('lit', trueScale);
+  b.title = trueScale ? 'Drawn to scale — click to stretch across the line' : 'Across-line direction is stretched — click for true 1:1 scale'; }
+function draw(){
+  const g = G, x0 = g.viewX0, x1 = Math.max(g.exit, g.wallOut, ...g.rollers.map(r=>r.b)) + 12;
+  const W0 = cv.clientWidth, Hh = viewH(W0, x0, x1, 90, Math.max(264, Math.min(454, W0*0.40)));
+  const {w,h,dpr} = fit(cv, Hh); ctx.setTransform(dpr,0,0,dpr,0,0);
+  const sx = w/(x1-x0);
+  const HH = HW(), top = 60, bot = h-30, sy = trueScale ? sx : (bot-top)/(2*HH+10);   // top row (y 14) = speed / stop status, clear of the sensor labels
+  const X = x => (x-x0)*sx, Y = y => top + (y+HH+5)*sy;
+  VIEW = {x0, sx};
+  ctx.clearRect(0,0,w,h); ctx.fillStyle = C.canvas; ctx.fillRect(0,0,w,h);
+  ctx.font = '600 10px IBM Plex Mono, monospace'; ctx.textBaseline = 'middle';
+
+  ctx.strokeStyle = C.room; ctx.lineWidth = 1.5; ctx.setLineDash([]);
+  ctx.strokeRect(X(g.wallIn), Y(-HH-3), X(g.wallOut)-X(g.wallIn), Y(HH+3)-Y(-HH-3));
+  { // room name centred on the room, but stepped aside if the curtain marker would sit on it
+    const lbl = (room==='top'?'TOP':'BASE')+' PAINT ROOM', tw = ctx.measureText(lbl).width, cx = X(g.curtain);
+    let lx = X((g.wallIn+g.wallOut)/2);
+    if (Math.abs(lx - cx) < tw/2 + 12) lx = cx + 12 + tw/2 <= X(g.wallOut) - 4 ? cx + 12 + tw/2 : cx - 12 - tw/2;
+    ctx.fillStyle = C.room; ctx.textAlign='center'; ctx.fillText(lbl, lx, Y(-HH-3)-8);
+  }
+
+  const yA = Y(-HH), yB = Y(HH);
+  for (const r of g.rollers){   // rotating = scrolling stripes (speed ∝ surface speed) + base/high outline; static = faded, plain
+    const xa = X(r.a), rw = Math.max(2, X(r.b)-xa), spin = (r.v||0) > 1e-3;
+    ctx.globalAlpha = spin ? 1 : 0.45; ctx.fillStyle = C[TYPES[r.type].col]; ctx.fillRect(xa, yA, rw, yB-yA); ctx.globalAlpha = 1;
+    if (!spin) continue;
+    ctx.save(); ctx.beginPath(); ctx.rect(xa, yA, rw, yB-yA); ctx.clip();
+    ctx.strokeStyle = 'rgba(0,0,0,.38)'; ctx.lineWidth = 1.5;
+    const per = 10, off = r.phase * per;
+    for (let y = yA - per - rw + off; y < yB + per; y += per){ ctx.beginPath(); ctx.moveTo(xa, y + rw); ctx.lineTo(xa + rw, y); ctx.stroke(); }
+    ctx.restore();
+    ctx.strokeStyle = r.v > (g.vB+g.vH)/2 ? C.high : C.base; ctx.lineWidth = 1.5; ctx.strokeRect(xa - .75, yA - .75, rw + 1.5, yB - yA + 1.5);
+  }
+  for (const b of g.belts){
+    ctx.fillStyle = C.belt; ctx.fillRect(X(b.a), yA, X(b.b)-X(b.a), yB-yA);
+    ctx.save(); ctx.beginPath(); ctx.rect(X(b.a), yA, X(b.b)-X(b.a), yB-yA); ctx.clip();
+    ctx.strokeStyle = C.beltDark; ctx.lineWidth = 1;
+    const off = S.beltPos % 12;
+    for (let x = b.a-12+off; x < b.b+12; x += 12){ ctx.beginPath(); ctx.moveTo(X(x), yA); ctx.lineTo(X(x), yB); ctx.stroke(); }
+    ctx.restore();
+  }
+  const vline = (x, col, label, dash=[4,4], yl=top-26) => {
+    ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash(dash);
+    ctx.beginPath(); ctx.moveTo(X(x), top-18); ctx.lineTo(X(x), bot+6); ctx.stroke(); ctx.setLineDash([]);
+    if (label){ const tw = ctx.measureText(label).width;   // backing box so the line never runs through the text
+      ctx.fillStyle = C.canvas; ctx.fillRect(X(x) - tw/2 - 3, yl - 7, tw + 6, 14);
+      ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.fillText(label, X(x), yl); }
+  };
+  const vB = g.vB, vH = g.vH;
+  for (const s of S.sheets){
+    const xa = X(s.x - s.len), xb = X(s.x), ya = Y(s.y0), yb = Y(s.y1);
+    if (xb < 0 || xa > w) continue;
+    ctx.fillStyle = bareCol(); ctx.fillRect(xa, ya, xb-xa, yb-ya);
+    let d = 0; const runs = [];   // coated spans, so the outline can follow the paint too
+    while (d < s.n){
+      const v = s.coat[d]; if (!v){ d++; continue; }
+      const bin = Math.round(clamp((v - vB)/(vH - vB),0,1)*4);
+      let e = d+1; while (e < s.n && s.coat[e] && Math.round(clamp((s.coat[e]-vB)/(vH-vB),0,1)*4)===bin) e++;
+      const rx = X(s.x - Math.min(e, s.len)), rw = X(s.x - d) - rx, ry = ya+1, rh = yb-ya-2;
+      const fill = bin===4 ? paintCol() : mix(thickCol(), paintCol(), bin/4);
+      ctx.fillStyle = fill;
+      ctx.fillRect(rx, ry, rw, rh); runs.push([rx, rw]);
+      if (bin < 4){   // thick film: hatch, so it never depends on telling two shades apart
+        ctx.save(); ctx.beginPath(); ctx.rect(rx, ry, rw, rh); ctx.clip();
+        ctx.strokeStyle = hatchOn(fill); ctx.lineWidth = 1.2;
+        for (let k = rx - rh; k < rx + rw; k += 6){ ctx.beginPath(); ctx.moveTo(k, ry+rh); ctx.lineTo(k+rh, ry); ctx.stroke(); }
+        ctx.restore();
+      }
+      d = e;
+    }
+    ctx.strokeStyle = s.broken ? C.alarm : bareEdge(); ctx.lineWidth = s.broken ? 1.8 : 1;
+    if (s.broken) ctx.setLineDash([5,3]);   // broken = dashed edge as well as red
+    ctx.strokeRect(xa+.5, ya+.5, xb-xa-1, yb-ya-1); ctx.setLineDash([]);
+    if (!s.broken && runs.length){   // painted part of the sheet gets a paint-coloured edge
+      ctx.save(); ctx.beginPath(); for (const [rx, rw] of runs) ctx.rect(rx, ya-1, rw, yb-ya+2); ctx.clip();
+      ctx.strokeStyle = paintEdge(); ctx.strokeRect(xa+.5, ya+.5, xb-xa-1, yb-ya-1); ctx.restore();
+    }
+    { // labels: load no. on the first sheet, size (W × L in) on every sheet that has room
+      const wIn = +(s.y1 - s.y0).toFixed(1), lIn = +s.len.toFixed(1), size = `${wIn}×${lIn}"`;
+      ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.font='600 10px IBM Plex Mono, monospace';
+      const first = s.col===0 && s.row===0, idTxt = first ? 'L'+s.load.id : '';
+      const full = idTxt ? `${idTxt}  ${size}` : size;
+      const fits = t => ctx.measureText(t).width + 8 <= xb-xa && yb-ya >= 14;
+      const txt = fits(full) ? full : (idTxt && fits(idTxt) ? idTxt : (fits(size) ? size : ''));
+      if (txt){
+        const tw = ctx.measureText(txt).width;
+        ctx.globalAlpha = .75; ctx.fillStyle = C.canvas; ctx.fillRect(xa+2, ya+2, tw+4, 13); ctx.globalAlpha = 1;
+        ctx.fillStyle = C.ink; ctx.fillText(txt, xa+4, ya+9);
+      }
+    }
+  }
+  ctx.font = '600 10px IBM Plex Mono, monospace';   // position lines on top of the glass
+  vline(0, C.soft, 'ENTRY');
+  vline(g.A, C.high, `A ${P.accelPulses}p (sim)`, [2,3], top-12);
+  vline(g.inlet, C.soft, 'INLET', [4,4], (Math.abs(g.inlet)*sx < 60) ? top-38 : top-26);
+  vline(g.exit, C.soft, room==='base' ? 'EXIT (placeholder)' : 'EXIT');
+  const cx = X(g.curtain);
+  ctx.fillStyle = paintCol(); ctx.globalAlpha = .9; ctx.fillRect(cx - Math.max(2, sx*1.2), Y(-HH), Math.max(4, sx*2.4), Y(HH)-Y(-HH));
+  ctx.globalAlpha = .55; ctx.fillStyle = C.panel;
+  const ph = (S.t*80) % 10;
+  for (let y = -HH + ph; y < HH; y += 10) ctx.fillRect(cx-0.5, Y(y), 1, sy*3);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = paintCol(); ctx.beginPath(); ctx.moveTo(cx-7, top-18); ctx.lineTo(cx+7, top-18); ctx.lineTo(cx, top-6); ctx.closePath(); ctx.fill();
+  ctx.textAlign='center'; ctx.fillText('CURTAIN', cx, top-30);
+
+  for (const p of POS){
+    const px = X(posX(p));
+    for (const sc of SEC) for (const [i,ab] of ['A','B'].entries()){
+      const k = `${p}-${sc}-${ab}`, yy = Y(sensY(sc, ab)), on = S.sens[k], stuck = F.stuck.has(k);
+      ctx.globalAlpha = secOn(sc) ? 1 : 0.28;
+      ctx.fillStyle = on ? C.soft : C.canvas;
+      ctx.fillRect(px-4, yy-4, 8, 8);
+      ctx.strokeStyle = stuck ? C.alarm : C.ink; ctx.lineWidth = stuck ? 2 : 1; ctx.strokeRect(px-4, yy-4, 8, 8);
+      if (stuck){ ctx.beginPath(); ctx.moveTo(px-4,yy-4); ctx.lineTo(px+4,yy+4); ctx.moveTo(px+4,yy-4); ctx.lineTo(px-4,yy+4); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+  }
+  ctx.font = '700 10px IBM Plex Mono, monospace'; ctx.textAlign = 'right';
+  for (const [i,sc] of SEC.entries()){
+    const yy = Y(SECY[sc]), tx = X(0) - 9, lbl = `${i+1} ${sc}`, tw = ctx.measureText(lbl).width;
+    ctx.fillStyle = C.canvas; ctx.globalAlpha = .85; ctx.fillRect(tx - tw - 3, yy - 7, tw + 6, 14); ctx.globalAlpha = 1;
+    ctx.fillStyle = C.ink; ctx.fillText(lbl, tx, yy);
+  }
+  ctx.textAlign = 'left'; ctx.font = '600 10px IBM Plex Mono, monospace'; ctx.fillStyle = C.muted;
+
+  /* projected trigger points (glass front): ▲ speed-up, ▼ back to base */
+  ctx.font = '600 9.5px IBM Plex Mono, monospace';
+  let lane = 0;
+  for (const L of S.SI.loads){
+    let x = null, col, txt;
+    if (L.state==='WAIT' || L.state==='ARM'){ x = Math.max(L.upIn, frontOf(L) ?? -1e9); col = C.high; txt = `▲S${L.id}`; }
+    else if (L.state==='HIGH' && L.frontAtAccel!=null){ x = L.frontAtAccel + L.Xp*P.highRes; col = C.base; txt = `▼S${L.id}`; }
+    if (x==null) continue;
+    ctx.strokeStyle = col; ctx.setLineDash([1,3]); ctx.beginPath(); ctx.moveTo(X(x), Y(-HH-5)); ctx.lineTo(X(x), bot); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = col; ctx.textAlign='center'; ctx.fillText(txt, X(x), bot+10+(lane++%2)*10);
+  }
+  ctx.font = '500 10px IBM Plex Sans, sans-serif'; ctx.fillStyle = C.muted; ctx.textAlign='center';
+  ctx.textAlign='left'; ctx.fillText('← from oven / metal dry · top edge = LEFT side (facing flow)', 6, h-8); ctx.textAlign='right';
+  ctx.fillText('to oven →', w-6, h-8);
+  const hi = S.roomV > (vB+vH)/2;
+  ctx.textAlign='right'; ctx.font='600 12px IBM Plex Mono, monospace';
+  ctx.fillStyle = !S.run ? C.alarm : hi ? C.high : C.base;
+  ctx.fillText(!S.run ? 'LINE STOPPED' : `${(S.roomV/MM2IN).toFixed(0)} mm/s ${hi?'HIGH':'BASE'}`, w-10, 14);
+  if (S.stopReq){ ctx.fillStyle = C.alarm; ctx.fillText('E-STOP: finishing high-speed cycle…', w-10, 30); }
+  if (S.jobUntil && S.t < S.jobUntil){   // job-change pill, bottom centre of the rollers
+    const msg = `JOB CHANGE → ${R.name} · next load in ${fmtClock(S.jobUntil - S.t)}`;
+    ctx.font = '700 12px IBM Plex Mono, monospace'; const tw = ctx.measureText(msg).width + 24, bx = w/2 - tw/2, by = Y(HH) - 34;
+    ctx.globalAlpha = .92; ctx.fillStyle = C.panel; ctx.fillRect(bx, by, tw, 24); ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.soft; ctx.lineWidth = 1.5; ctx.strokeRect(bx+.5, by+.5, tw-1, 23);
+    ctx.fillStyle = C.soft; ctx.textAlign = 'center'; ctx.fillText(msg, w/2, by + 12); }
+  if (!running){   // paused badge
+    const msg = 'PAUSED · press Run or Space'; ctx.font = '700 13px IBM Plex Sans, sans-serif';
+    const tw = ctx.measureText(msg).width + 28, bx = w/2 - tw/2, by = Y(0) - 16;
+    ctx.globalAlpha = .9; ctx.fillStyle = C.panel; ctx.fillRect(bx, by, tw, 32); ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.soft; ctx.lineWidth = 2; ctx.strokeRect(bx+1, by+1, tw-2, 30);
+    ctx.fillStyle = C.soft; ctx.textAlign = 'center'; ctx.fillText(msg, w/2, by + 16);
+  }
+}
+function drawTrend(){
+  const {w,h,dpr} = fit(tr, 130); tctx.setTransform(dpr,0,0,dpr,0,0);
+  tctx.clearRect(0,0,w,h);
+  const L = 44, Rr = 8, T = 8, B = h-20, span = 40, tEnd = Math.max(span, S.t), tStart = tEnd - span;
+  const ymax = P.vHighMM*1.1, Xt = t => L + (t-tStart)/span*(w-L-Rr), Yv = v => B - v/ymax*(B-T);
+  tctx.font = '10px IBM Plex Mono, monospace'; tctx.fillStyle = C.muted; tctx.textAlign='right'; tctx.textBaseline='middle';
+  tctx.strokeStyle = C.line; tctx.lineWidth = 1;
+  for (const v of [P.vBaseMM, P.vHighMM]){ tctx.beginPath(); tctx.moveTo(L, Yv(v)); tctx.lineTo(w-Rr, Yv(v)); tctx.stroke(); tctx.fillText(v, L-6, Yv(v)); }
+  tctx.textAlign='center';
+  for (let t = Math.ceil(tStart/5)*5; t <= tEnd; t += 5) tctx.fillText(t+'s', Xt(t), h-8);
+  const pts = S.trend.filter(p => p.t >= tStart);
+  if (pts.length > 1){
+    tctx.strokeStyle = C.muted; tctx.setLineDash([3,3]); tctx.beginPath();
+    pts.forEach((p,i) => i ? tctx.lineTo(Xt(p.t), Yv(p.run?p.c:0)) : tctx.moveTo(Xt(p.t), Yv(p.run?p.c:0))); tctx.stroke(); tctx.setLineDash([]);
+    tctx.strokeStyle = C.high; tctx.lineWidth = 2; tctx.beginPath();
+    pts.forEach((p,i) => i ? tctx.lineTo(Xt(p.t), Yv(p.v)) : tctx.moveTo(Xt(p.t), Yv(p.v))); tctx.stroke();
+  }
+  for (const a of S.log) if (a.level==='HARD' && a.t >= tStart){ tctx.fillStyle = C.alarm; tctx.fillRect(Xt(a.t)-1, T, 2, B-T); }
+}
+
+/* ---------------- settings: line preview (static glass of one size on the layout) ---------------- */
+const pv = $('#pv'), pctx = pv.getContext('2d');
+let PV_VIEW = null, pvAnim = false;
+const pvSize = () => ({ w:+$('#pvW').value||0, len:+$('#pvL').value||0, nAcross:Math.max(1,Math.round(+$('#pvAcross').value||1)),
+  nLen:Math.max(1,Math.round(+$('#pvNLen').value||1)), align:$('#pvAlign').value, gapX:+$('#pvGapX').value||0, gapY:10 });
+const pvOn = T => $('#pvPreset').value==='custom' ? coverage(T) : PRESETS[+$('#pvPreset').value].on;
+const pvRange = () => { const x1 = Math.max(G.exit, G.wallOut, ...G.rollers.map(r=>r.b)) + 12; return [mm(G.viewX0), mm(x1 + lNet(pvSize()))]; };
+function pvSetPos(v){
+  const [a,b] = pvRange(); v = Math.round(clamp(v, a, b));
+  const r = $('#pvPos'); r.min = a; r.max = b; r.value = v; $('#pvPosN').value = v;
+}
+/* sheets of the preview load: [tail, front, yLeft, yRight] in inches */
+function pvSheets(T, front){
+  const out = [];
+  for (let row=0; row<T.nLen; row++){ const xf = front - row*(T.len+T.gapX); for (const [y0,y1] of lateral(T)) out.push([xf - T.len, xf, y0, y1]); }
+  return out;
+}
+function drawPreview(){
+  const W0 = pv.clientWidth; if (!W0) return;
+  const x0 = G.viewX0, x1 = Math.max(G.exit, G.wallOut, ...G.rollers.map(r=>r.b)) + 12;
+  const {w,h,dpr} = fit(pv, viewH(W0, x0, x1, 108, Math.max(260, Math.min(400, W0*0.32)))); pctx.setTransform(dpr,0,0,dpr,0,0);
+  const c = pctx, g = G, T = pvSize(), p = predict(T), on = pvOn(T), front = (+$('#pvPos').value||0)*MM2IN, sheets = pvSheets(T, front);
+  const sx = w/(x1-x0);
+  const HH = HW(), top = 62, bot = h-46, sy = trueScale ? sx : (bot-top)/(2*HH+10);
+  const X = x => (x-x0)*sx, Y = y => top + (y+HH+5)*sy;
+  PV_VIEW = {x0, sx};
+  c.clearRect(0,0,w,h); c.fillStyle = C.canvas; c.fillRect(0,0,w,h);
+  c.font = '600 10px IBM Plex Mono, monospace'; c.textBaseline = 'middle';
+
+  c.strokeStyle = C.room; c.lineWidth = 1.5; c.setLineDash([]);
+  c.strokeRect(X(g.wallIn), Y(-HH-3), X(g.wallOut)-X(g.wallIn), Y(HH+3)-Y(-HH-3));
+  c.fillStyle = C.room; c.textAlign = 'center';
+  c.fillText((room==='top'?'TOP':'BASE')+' PAINT ROOM', X((g.wallIn+g.wallOut)/2), Y(-HH-3)-8);
+
+  const yA = Y(-HH), yB = Y(HH);
+  for (const r of g.rollers){ c.fillStyle = C[TYPES[r.type].col]; const xa = X(r.a); c.fillRect(xa, yA, Math.max(2, X(r.b)-xa), yB-yA); }
+  for (const b of g.belts){ c.fillStyle = C.belt; c.fillRect(X(b.a), yA, X(b.b)-X(b.a), yB-yA); }
+  c.font = '500 9.5px IBM Plex Mono, monospace'; c.fillStyle = C.muted; c.textAlign = 'center';
+  positions(LAYOUT[room]).forEach(([a,b],i) => { if (X(b*MM2IN) - X(a*MM2IN) >= 16) c.fillText('#'+(i+1), X((a+b)/2*MM2IN), yB+9); });
+
+  const vline = (x, col, label, dash, yl) => {
+    c.strokeStyle = col; c.lineWidth = 1; c.setLineDash(dash);
+    c.beginPath(); c.moveTo(X(x), top-18); c.lineTo(X(x), bot+4); c.stroke(); c.setLineDash([]);
+    const tw = c.measureText(label).width;
+    c.fillStyle = C.canvas; c.fillRect(X(x) - tw/2 - 3, yl - 7, tw + 6, 14);
+    c.fillStyle = col; c.textAlign = 'center'; c.fillText(label, X(x), yl);
+  };
+  c.font = '600 10px IBM Plex Mono, monospace';
+  const cx = X(g.curtain);
+  c.fillStyle = paintCol(); c.globalAlpha = .9; c.fillRect(cx - 2, yA, 4, yB-yA); c.globalAlpha = 1;
+  c.textAlign = 'center'; c.fillText(`CURTAIN ${mm(g.curtain)}`, cx, top-40);
+
+  /* glass */
+  c.font = '600 10px IBM Plex Mono, monospace'; c.textAlign = 'left';
+  for (const [xt,xf,y0,y1] of sheets){
+    const xa = X(xt), xb = X(xf), ya = Y(y0), yb = Y(y1);
+    c.fillStyle = C.glass; c.fillRect(xa, ya, xb-xa, yb-ya);   // settings preview keeps the plain glass look
+    c.strokeStyle = C.glassEdge; c.lineWidth = 1.5; c.strokeRect(xa+.5, ya+.5, xb-xa-1, yb-ya-1);
+    const txt = `${T.w}×${T.len}"`;
+    if (c.measureText(txt).width + 8 <= xb-xa && yb-ya >= 14){ c.fillStyle = C.ink; c.fillText(txt, xa+4, ya+9); }
+  }
+  vline(0, C.soft, 'ENTRY 0', [4,4], top-26);   // position lines on top of the glass
+  vline(g.A, C.high, `A ${P.accelPulses}p (sim)`, [2,3], top-12);
+  vline(g.inlet, C.soft, `INLET ${mm(g.inlet)}`, [4,4], top-26);
+  vline(g.exit, C.soft, `EXIT ${mm(g.exit)}${room==='base' ? ' (placeholder)' : ''}`, [4,4], top-26);
+  c.strokeStyle = C.glassEdge; c.setLineDash([2,2]); c.beginPath(); c.moveTo(X(front), top-50); c.lineTo(X(front), bot+4); c.stroke(); c.setLineDash([]);
+  c.fillStyle = C.glassEdge; c.textAlign = X(front) > w-90 ? 'right' : 'left'; c.fillText(` front ${mm(front)} `, X(front), top-50);
+
+  /* sensors: lit when both glass covers the beam (with the coverage margin) */
+  const covered = (x, y) => sheets.some(([xt,xf,y0,y1]) => x >= xt && x <= xf && y >= y0 + P.covMargin && y <= y1 - P.covMargin);
+  for (const ps of POS){ const px = X(posX(ps));
+    for (const [i,sc] of SEC.entries()) for (const ab of ['A','B']){
+      const yy = Y(sensY(sc, ab)), lit = covered(posX(ps), sensY(sc, ab));
+      c.globalAlpha = on.includes(String(i+1)) ? 1 : 0.28;
+      c.fillStyle = lit ? C.soft : C.canvas; c.fillRect(px-4, yy-4, 8, 8);
+      c.strokeStyle = C.ink; c.lineWidth = 1; c.strokeRect(px-4, yy-4, 8, 8); c.globalAlpha = 1;
+    } }
+  c.font = '700 10px IBM Plex Mono, monospace'; c.textAlign = 'right';
+  for (const [i,sc] of SEC.entries()){
+    const yy = Y(SECY[sc]), tx = X(0) - 9, lbl = `${i+1} ${sc}${on.includes(String(i+1)) ? '' : ' (off)'}`, tw = c.measureText(lbl).width;
+    c.fillStyle = C.canvas; c.globalAlpha = .85; c.fillRect(tx - tw - 3, yy - 7, tw + 6, 14); c.globalAlpha = 1;
+    c.fillStyle = on.includes(String(i+1)) ? C.ink : C.faint; c.fillText(lbl, tx, yy);
+  }
+
+  /* where the formula speeds up / returns to base (glass front) */
+  c.font = '600 10px IBM Plex Mono, monospace';
+  for (const [x,col,txt] of [[p.accel, C.high, `▲ speed-up ${mm(p.accel)}${p.late?'*':''}`], [p.decel, C.base, `▼ back to base ${mm(p.decel)}`]]){
+    c.strokeStyle = col; c.setLineDash([1,3]); c.beginPath(); c.moveTo(X(x), Y(-HH-5)); c.lineTo(X(x), bot+4); c.stroke(); c.setLineDash([]);
+    c.fillStyle = col; c.textAlign = X(x) > w-120 ? 'right' : 'center'; c.fillText(txt, X(x), h-26);
+  }
+  c.font = '500 10px IBM Plex Sans, sans-serif'; c.fillStyle = C.muted;
+  c.textAlign = 'left'; c.fillText('← from oven / metal dry', 6, h-8); c.textAlign = 'right'; c.fillText('to oven →', w-6, h-8);
+
+  /* readout */
+  const lab = s => s.split('').map(d=>['L','C','R'][d-1]).join(' ') || '—';
+  const at = ps => lab(SEC.map((sc,i) => on.includes(String(i+1)) && covered(posX(ps), sensY(sc,'A')) && covered(posX(ps), sensY(sc,'B')) ? String(i+1) : '').join(''));
+  const span = lNet(T), info = `Glass: <b>${T.nAcross}×${T.nLen}</b> sheets of ${T.w}×${T.len} in · load length <b>${mm(span)} mm</b> (${span.toFixed(1)} in) · front <b>${mm(front)} mm</b>, tail <b>${mm(front-span)} mm</b> from Entry<br>` +
+    `Sensors ON for this size: <b>${lab(on)}</b> · now covered → Entry <b class="${at('ENTRY')==='—'?'dim':''}">${at('ENTRY')}</b> · Inlet <b class="${at('INLET')==='—'?'dim':''}">${at('INLET')}</b> · Exit <b class="${at('EXIT')==='—'?'dim':''}">${at('EXIT')}</b><br>` +
+    `<span class="hi">▲ Speed-up at ${mm(p.accel)} mm</span>${p.late?' <span class="warn">late*</span>':''} · <span class="lo">▼ Back to base at ${mm(p.decel)} mm</span> (${fmtRel(p.decel-G.exit)} vs Exit) · high-speed distance X = ${mm(p.Xin)} mm`;
+  if ($('#pvInfo').innerHTML !== info) $('#pvInfo').innerHTML = info;
+}
+pv.addEventListener('click', e => { if (!PV_VIEW) return; const rect = pv.getBoundingClientRect(); pvAnim = false; $('#pvPlay').textContent = '▶ Move along line';
+  pvSetPos(mm((e.clientX - rect.left)/PV_VIEW.sx + PV_VIEW.x0)); });
+cv.addEventListener('mousemove', e => {
+  if (!VIEW) return;
+  const rect = cv.getBoundingClientRect(), xIn = (e.clientX - rect.left)/VIEW.sx + VIEW.x0, xm = mm(xIn);
+  const hits = [];
+  positions(LAYOUT[room]).forEach(([a,b],i) => { if (xm >= a && xm <= b) hits.push(`#${i+1} ${TYPES[LAYOUT[room].rows[i].type].label}`); });
+  const glass = S.sheets.filter(s => xIn <= s.x && xIn >= s.x - s.len).map(s=>`L${s.load.id} ${(s.v/MM2IN).toFixed(0)} mm/s`);
+  $('#hover').className = '';
+  $('#hover').textContent = `${xm} mm from Entry · ${fmtRel(xIn - G.inlet)} vs Inlet · ${fmtRel(xIn - G.curtain)} vs curtain · ${fmtRel(xIn - G.exit)} vs Exit` +
+    (hits.length ? ` · ${[...new Set(hits)].join(', ')}` : '') + (glass.length ? ` · ${[...new Set(glass)].join(', ')}` : '');
+});
+
+/* ---------------- UI ---------------- */
+const f1 = v => v==null || isNaN(v) ? '—' : (+v).toFixed(1);
+const f2 = v => v==null || isNaN(v) ? '—' : (+v).toFixed(2);
+const mmCell = v => v==null ? '<span class="dim">…</span>' : mm(v);
+function loadData(L){
+  const lead = L.sheets[0], si = lead && lead.sl, p = L.p;
+  let tot=0, hiN=0;
+  for (const s of L.sheets) for (let d=0; d<s.n; d++){ const v=s.coat[d]; if (v){ tot++; if (v >= 0.9*G.vH) hiN++; } }
+  const fin = si && si.final;
+  return { id:L.id, size:L.r.name, room, Lin: fin ? si.Lin : null, Gs: fin ? si.Lp : null, K: fin ? si.K : null, Xp: fin ? Math.round(si.Xp) : null,
+    upPred: mm(p.accel), upSim: si && si.frontAtAccel!=null ? mm(si.frontAtAccel) : null,
+    basePred: mm(p.decel), baseSim: si && si.frontAtDecel!=null ? mm(si.frontAtDecel) : null,
+    covPred: p.cov, covSim: tot ? hiN/tot*100 : null, covDone: L.sheets.every(s => s.x - s.len > G.curtain),
+    hiPred: p.hiT, hiSim: si && si.tDecel!=null && si.tAccel!=null ? si.tDecel - si.tAccel : null,
+    roomPred: p.inRoom, roomSim: si && si.inRoom!=null && !isNaN(si.inRoom) ? si.inRoom : null };
+}
+function downloadCSV(){
+  const cfg = timerCfg();
+  const cols = [['id','Load'],['room','Room'],['size','Size'],['Lin','PLC L (in)'],['Gs','Gs (slow p)'],['K','K'],['Xp','X (high p)'],
+    ['upPred','Speed-up front pred (mm)'],['upSim','Speed-up front sim (mm)'],['basePred','Back-to-base front pred (mm)'],['baseSim','Back-to-base front sim (mm)'],
+    ['covPred','Curtain @high pred (%)'],['covSim','Curtain @high sim (%)'],['hiPred','High speed pred (s)'],['hiSim','High speed sim (s)'],
+    ['roomPred',`In room pred (s) ${TLBL[cfg.start]}→${TLBL[cfg.stop]}`],['roomSim',`In room sim (s) ${TLBL[cfg.start]}→${TLBL[cfg.stop]}`]];
+  const fmt = v => v==null || (typeof v==='number' && isNaN(v)) ? '' : typeof v==='number' ? (Math.round(v*1000)/1000) : `"${String(v).replace(/"/g,'""')}"`;
+  const lines = [cols.map(c=>`"${c[1]}"`).join(',')].concat(S.loads.map(L => { const d = loadData(L); return cols.map(c=>fmt(d[c[0]])).join(','); }));
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + lines.join('\n')], {type:'text/csv'}));
+  a.download = `flow-coater-${room}-${new Date().toISOString().slice(0,16).replace(/[:T]/g,'')}.csv`; document.body.appendChild(a); a.click(); a.remove();
+}
+/* write markup only when it changed, so buttons inside survive the 200 ms refresh */
+const setHTML = (el, h) => { if (el._h !== h){ el._h = h; el.innerHTML = h; } };
+
+/* what-if baseline per room: the parameters + that room's layout at the moment it was pinned (this session only) */
+const BL = { top:null, base:null };
+function withSettings(snap, fn){
+  const p0 = {...P}, l0 = LAYOUT[room], g0 = G;
+  Object.assign(P, snap.P); LAYOUT[room] = snap.L; updateSECY(); G = geom();
+  try { return fn(); } finally { Object.assign(P, p0); LAYOUT[room] = l0; updateSECY(); G = g0; }
+}
+const paramDiff = () => PARAM_UI.filter(([k]) => k!=='h' && P[k] !== FACTORY_P[k]).map(([k]) => k);
+const chargeMargin = T => Math.floor(P.chargeLong - lNet(T)/P.slowRes);
+function renderKR(T, p){
+  const bl = BL[room], b = bl ? withSettings(bl, () => ({ p:predict(T), m:chargeMargin(T), ex:G.exit })) : null, m = chargeMargin(T);
+  const sg = v => v > 0 ? '+' + v : v < 0 ? '−' + Math.abs(v) : '±0';
+  const dl = (now, then, unit='') => !b ? '' : `<span class="d${Math.round(now)!==Math.round(then)?' ch':''}">Δ ${sg(Math.round(now - then))}${unit}</span>`;
+  const row = (k, v, unit, cls, d) => `<span class="k">${k}</span><span class="v ${cls}">${v}<small>${unit}</small></span>${b ? d || '<span class="d"></span>' : ''}`;
+  const covCls = p.cov >= 99.5 ? 'pass' : p.cov >= 80 ? 'warn' : 'fail';
+  const html =
+    row('Speed-up at', `${mm(p.accel)}${p.late?'<span class="warn" title="PLC knows L only when the tail clears Entry">*</span>':''}`, 'mm', 'hi', b && dl(mm(p.accel), mm(b.p.accel))) +
+    row('Back to base at', mm(p.decel), 'mm', 'lo', b && dl(mm(p.decel), mm(b.p.decel))) +
+    row('· vs Exit', fmtRel(p.decel - G.exit).replace(' mm',''), 'mm', '', b && dl(mm(p.decel - G.exit), mm(b.p.decel - b.ex))) +
+    row('High-speed distance X', mm(p.Xin), 'mm', '', b && dl(mm(p.Xin), mm(b.p.Xin))) +
+    row('Curtain at high speed', p.cov.toFixed(0), '%', covCls, b && dl(p.cov, b.p.cov, '%')) +
+    row('Charge Too Long margin', m, 'p', m < 0 ? 'fail' : m < 40 ? 'warn' : '', b && dl(m, b.m));
+  $('#kr').classList.toggle('nobl', !b);
+  setHTML($('#kr'), html);
+  const n = paramDiff().length;
+  const foot = (b ? `Δ = now − baseline pinned ${bl.at.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}. ` : 'Pin a baseline, then change parameters or the layout in Settings to see the difference. ') +
+    (n ? `<b>${n}</b> ${n>1 ? 'parameters differ' : 'parameter differs'} from factory · <button class="lnk" data-go="params">open Parameters</button>` : 'Parameters are at factory values.');
+  setHTML($('#krFoot'), foot);
+  $('#blClr').hidden = !b; $('#blPin').textContent = b ? 'Re-pin' : 'Pin as baseline';
+}
+
+/* fault banner: why the line stopped, when, and what to do next */
+function faultInfo(){
+  const e = S.log.find(x => x.level==='HARD'), m = e ? e.msg : '';
+  const hint = /^CHARGE TOO LONG/.test(m) ? `The load is longer than Charge Too Long (${P.chargeLong} slow p). Pick a shorter size, or check the value in Settings → Parameters.`
+    : /^RUN-UP FAULT/.test(m) ? 'The room did not reach high speed in time. If you injected "VFD no run-up" or "High encoder dead", clear it first.'
+    : /^RETARDATION FAULT/.test(m) ? 'The room stayed at high speed after the base command. If you injected "VFD stuck high", clear it first.'
+    : /EMERGENCY STOP/.test(m) ? 'E-STOP was pressed. Restart the line when it is safe.'
+    : /^(LENGTH|LANE|SENSOR|SPEED-UP CHECK)/.test(m) ? 'A Mitsubishi check tripped the interlock. Clear any stuck sensor or injected fault, check the HMI size, then restart.'
+    : 'See the event log for the cause, then restart.';
+  return { why: m || 'No alarm recorded', t: e ? e.t : (S.stopT ?? S.t), hint };
+}
+function updateFault(){
+  const f = $('#fault'), stopped = !S.run, stopping = S.run && !!S.stopReq;
+  f.hidden = !(stopped || stopping);
+  if (f.hidden){ f._k = ''; return; }
+  const fi = faultInfo(), k = [stopped, fi.why, fi.t].join('|');
+  if (f._k === k) return; f._k = k;          // rewrite only on change, so the alert is announced once
+  f.classList.toggle('stopping', stopping);
+  $('#faultTtl').textContent = stopped ? 'Line stopped' : 'Stopping';
+  $('#faultWhy').textContent = `${fi.why} · at ${fi.t.toFixed(1)} s`;
+  $('#faultHint').textContent = stopped ? fi.hint : 'Finishing the load at high speed first; the line stops once it is back to base.';
+}
+
+function updateUI(){
+  const hi = S.roomV > (G.vB+G.vH)/2;
+  $('#cSpeed').textContent = `${(S.roomV/MM2IN).toFixed(0)} mm/s`; $('#cSpeed').className = 'v ' + (!S.run?'alarm':hi?'high':'base');
+  $('#cCmd').textContent = S.cmd; $('#cCmd').className = 'v ' + (S.cmd==='HIGH'?'high':'base');
+  $('#cSim').textContent = running ? 'RUNNING' : 'PAUSED'; $('#cSim').className = 'v ' + (running ? 'ok' : 'base');
+  $('#cLine').textContent = !S.run ? 'STOPPED' : S.stopReq ? 'STOPPING' : running ? 'MOVING' : 'FROZEN'; $('#cLine').className = 'v ' + (!S.run||S.stopReq ? 'alarm' : running ? 'ok' : 'muted');
+  $('#cTime').textContent = S.t.toFixed(1)+' s';
+  { const same = sizeSig(formSize()) === sizeSig(R), b = $('#confirmBtn');
+    b.disabled = same; b.textContent = same ? 'Size unchanged' : 'Confirm (send to PLC)';
+    b.title = same ? 'Change the size first — a job change only happens when the size changes' : `Job change to the new size (${$('#rJob').value||0} min)`; }
+  { const on = S.jobUntil && S.t < S.jobUntil;
+    $('#jobChip').classList.toggle('active', !!on);
+    $('#cJob').textContent = on ? `${fmtClock(S.jobUntil - S.t)} left` : '—'; $('#cJob').className = 'v ' + (on ? 'base' : 'muted');
+    if (on) $('#jobBar').style.width = (100*(S.t - S.jobStart)/(S.jobUntil - S.jobStart)).toFixed(1) + '%';
+    $('#jobChip').title = on ? `Job change → ${R.name}, started at sim ${fmtClock(S.jobStart)}` : 'No job change running'; }
+  $('#hmiNow').textContent = `${HMI.name} · sensors ${SEC.filter(secOn).map(x=>x[0]).join(' ')}`;
+
+  { const pv = $('#preset').value, T = {nAcross:+$('#rAcross').value||1, w:+$('#rW').value||0, align:$('#rAlign').value,
+      len:+$('#rLen').value||0, nLen:+$('#rNLen').value||1, gapX:+$('#rGapX').value||0};
+    const exp = pv!=='custom' ? PRESETS[+pv].on : '', got = coverage(T), lab = c => c.split('').map(d=>['L','C','R'][d-1]).join(' ') || '—';
+    const p = predict(T);
+    const on = exp ? lab(exp) : lab(got);
+    renderKR(T, p);
+    const rn = `<span class="dim">PLC L ${p.Ln.toFixed(1)} in = ${p.Gs} p · 1st sheet ${p.L1} p → K ${p.K} · speed-up ${p.up} p · X ${p.Xp} hp</span><br>` +
+      `Sensors ON: <b class="mono">${on}</b>` + (exp ? ([...exp].every(d=>got.includes(d))
+          ? ` <span class="pass">✓ glass covers them all</span>`
+          : ` <span class="fail">✗ glass does not cover ${lab([...exp].filter(d=>!got.includes(d)).join(''))}</span>`) : '') +
+      (lNet(T)/P.slowRes > P.chargeLong ? ' <span class="fail">&gt; Charge Too Long</span>' : '') +
+      (S.jobUntil && S.t < S.jobUntil ? `<br><b class="warn">Job change → ${R.name}: next load in ${fmtClock(S.jobUntil - S.t)}</b> <button class="sm" id="jobSkip">skip</button>` : '');
+    setHTML($('#rNote'), rn); }
+  updateFault();
+
+  const c = Math.floor(S.enc.s1);
+  $('#plc tbody').innerHTML = S.SI.loads.slice(-8).reverse().map(L => {
+    const rem = L.state==='WAIT' ? `${Math.max(0, L.accelTarget - c).toFixed(0)} sp` : L.state==='ARM' ? `${Math.max(0, (P.cmdDelayS - (S.t - L.tArm))*1000).toFixed(0)} ms` : L.state==='HIGH' ? `${Math.max(0, L.Xp - (S.enc.h - L.hAt)).toFixed(0)} hp` : '';
+    const cls = L.state==='HIGH'?'class="hi"':L.state==='WAIT'||L.state==='ARM'?'':'class="dim"';
+    return `<tr ${cls}><td>S${L.id}</td><td class="l">${L.sheets.length}${L.final?'':' …'}</td><td>${f1(L.Lin)}</td><td>${L.Lp??'—'}</td><td>${L.K??'—'}</td><td>${L.Xp?L.Xp.toFixed(0):'—'}</td><td class="l">${L.state}${L.late>2?' (late)':''}</td><td>${rem}</td></tr>`;
+  }).join('');
+  $('#encKv').innerHTML = `<span>Slow enc #1</span><span>${c} p</span><span>High enc</span><span>${Math.floor(S.enc.h)} p · ${(S.hRate*P.highRes/MM2IN).toFixed(0)} mm/s</span>`;
+
+  const cfg = timerCfg();
+  $('#inRoomHdr').textContent = `In room (${TLBL[cfg.start]} → ${TLBL[cfg.stop]})`;
+  $('#res tbody').innerHTML = S.loads.slice(-100).reverse().map(L => {
+    const d = loadData(L), dm = v => v==null ? '<span class="dim">…</span>' : v;
+    const simCov = d.covSim==null ? '<span class="dim">…</span>' : `<span class="${d.covSim>=99?'pass':d.covSim>=80?'warn':'fail'}">${d.covSim.toFixed(0)}%${d.covDone?'':'…'}</span>`;
+    return `<tr><td>L${L.id}</td><td class="l">${d.size}</td><td>${dm(f1(d.Lin))}</td><td>${dm(d.Gs)}</td><td>${dm(d.K)}</td>
+      <td class="bl">${d.upPred}${L.p.late?'<span class="warn">*</span>':''}</td><td class="hi">${dm(d.upSim)}</td><td>${d.upSim!=null?fmtRel(d.upSim/IN2MM - G.inlet):'<span class="dim">…</span>'}</td>
+      <td class="bl">${d.basePred}</td><td class="lo">${dm(d.baseSim)}</td><td>${d.baseSim!=null?fmtRel(d.baseSim/IN2MM - G.exit):'<span class="dim">…</span>'}</td>
+      <td class="bl">${d.covPred.toFixed(0)}%</td><td>${simCov}</td>
+      <td class="bl">${f2(d.hiPred)}</td><td class="hi">${d.hiSim==null?'<span class="dim">…</span>':f2(d.hiSim)}</td>
+      <td class="bl">${f2(d.roomPred)}</td><td>${d.roomSim==null?'<span class="dim">…</span>':f2(d.roomSim)}</td></tr>`;
+  }).join('');
+
+  document.querySelectorAll('.sbtn').forEach(b => { const k=b.dataset.k; b.classList.toggle('lit', !!S.sens[k]); b.classList.toggle('stuck', F.stuck.has(k)); b.classList.toggle('dis', !secOn(k.split('-')[1])); });
+  document.querySelectorAll('button.tog').forEach(b => b.classList.toggle('on', !!F[b.dataset.f]));
+  if (S.logDirty){
+    const only = $('#motOnly').checked;
+    const rows = S.log.filter(e => !only || e.src==='MOTION' || e.level==='HARD');
+    $('#log').innerHTML = rows.map(e => `<div class="${e.level}"><span>${e.t.toFixed(1)}s</span><span>${e.src}</span><span>${e.msg}</span></div>`).join('') || '<div class="INFO"><span></span><span></span><span>No events yet</span></div>';
+    S.logDirty = false;
+  }
+  syncRunBtn();
+}
+
+/* ---------------- layout editor ---------------- */
+const SENS_LBL = {entry:'Entry', inlet:'Inlet', exit:'Exit', wallIn:'Room wall in', wallOut:'Room wall out'};
+function buildLayoutEditor(){
+  const L = LAYOUT[room], pos = positions(L);
+  $('#layRoom').textContent = room==='top' ? 'Top' : 'Base';
+  const refBy = {}; for (const [k,sp] of Object.entries(L.sensors)) (refBy[sp.ref] ||= []).push(SENS_LBL[k]);
+  // position bar: whole line extent, with ticks at Entry / Inlet / Exit
+  const ticks = ['entry','inlet','exit'].map(k => k==='entry' ? 0 : sensorAt(L, k, pos)).filter(v => v!=null);
+  const lo = Math.min(0, ...pos.map(p=>p[0])), hi = Math.max(...pos.map(p=>p[1]), ...ticks), pct = v => (v-lo)/((hi-lo)||1)*100;
+  const tickHtml = ticks.map((v,j) => `<s class="${j?'':'e'}" style="left:${pct(v).toFixed(2)}%"></s>`).join('');
+  $('#lay tbody').innerHTML = L.rows.map((r,i) => {
+    const isBelt = r.type==='belt', single = !isBelt && Math.round(+r.qty||1) <= 1;
+    const opt = Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===r.type?'selected':''}>${t.label}</option>`).join('');
+    // a field this type doesn't use shows "—" instead of an empty disabled box
+    const num = (f, dis, cls='', tip='') => `<td class="${cls}${dis?' na':''}"${tip?` title="${tip}"`:''}>${dis ? '—' : `<input type="number" step="any" data-i="${i}" data-k="${f}" value="${r[f] ?? ''}">`}</td>`;
+    const tag = refBy[r.id] ? `<div class="dim" style="font-size:10.5px;margin-top:2px" title="Sensor / wall reference">◆ ${refBy[r.id].join(' · ')}</div>` : '';
+    const last = i===L.rows.length-1, over = !last && pos[i+1][0] < pos[i][1], col = `var(--${TYPES[r.type].col})`;
+    const [a, b] = pos[i];
+    return `<tr><td><span class="sw" style="background:${col}"></span>${i+1}</td><td class="l"><select data-i="${i}" data-k="type">${opt}</select>${tag}</td>
+      ${num('qty',isBelt,'bl')}${num('dia',isBelt)}${num('pitch',isBelt||single)}${num('len',!isBelt,'bl')}
+      ${num('next', last, over ? 'bl fail' : 'bl', last ? 'Last row — nothing after it' : over ? 'Overlaps the next row' : '')}
+      <td class="bl">${Math.round(a)}</td><td>${Math.round(b)}</td>
+      <td class="lbar" title="${Math.round(a)} → ${Math.round(b)} mm (${Math.round(b-a)} mm long)"><div><i style="left:${pct(a).toFixed(2)}%;width:${(pct(b)-pct(a)).toFixed(2)}%;background:${col}"></i>${tickHtml}</div></td>
+      <td class="l"><span class="ed"><button data-act="up" data-i="${i}" title="Move up">↑</button><button data-act="down" data-i="${i}" title="Move down">↓</button><button data-act="ins" data-i="${i}" title="Insert a copy after this row">＋</button><button data-act="del" data-i="${i}" title="Delete row">✕</button></span></td></tr>`;
+  }).join('');
+  const rowOpts = sel => L.rows.map((r,i)=>`<option value="${r.id}" ${r.id===sel?'selected':''}>#${i+1} ${TYPES[r.type].label}</option>`).join('');
+  $('#laySens tbody').innerHTML = Object.entries(L.sensors).map(([k,sp]) => {
+    const at = k==='entry' ? 0 : sensorAt(L, k, pos);
+    return `<tr><td class="l"><b>${SENS_LBL[k]}</b></td><td class="l"><select data-s="${k}" data-f="ref">${rowOpts(sp.ref)}</select></td>
+      <td class="l"><select data-s="${k}" data-f="edge"><option value="up" ${sp.edge==='up'?'selected':''}>upstream edge</option><option value="down" ${sp.edge==='down'?'selected':''}>downstream edge</option></select></td>
+      <td><input type="number" step="any" data-s="${k}" data-f="off" value="${sp.off}" style="width:90px"></td><td>${at==null?'—':Math.round(at)}</td></tr>`;
+  }).join('');
+  $('#layPts').innerHTML = `<div class="f">Curtain (mm from Entry)<div class="mono" style="margin-top:4px">${mm(G.curtain)} · centre of the belt gap (automatic)</div></div>`;
+  const wid = [['sensL','1 LEFT pair — from glass left edge (in)'],['sensC','2 CENTER pair — from glass left edge (in)'],['sensR','3 RIGHT pair — from glass left edge (in)'],['pairGapMM','Gap between the 2 sensors of a pair (mm)']];
+  $('#layWidth').innerHTML = wid.map(([k,l]) => `<label class="f">${l}<input type="number" step="any" data-pp="${k}" value="${P[k]}"></label>`).join('');
+}
+function layoutChanged(){ saveLayout(); G = geom(); buildLayoutEditor(); setDirty(true); }
+let toastT = 0;
+function toast(msg, kind=''){
+  const t = $('#toast'); t.textContent = msg; t.className = kind;
+  t.style.top = ($('#hdr').getBoundingClientRect().bottom + 12) + 'px';
+  void t.offsetWidth; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600);
+}
+const setDirty = d => { $('#dirty').hidden = !d; };
+function defaultNext(r){ return r.type==='belt' ? 120 : ((+r.pitch||0) > 0 ? +r.pitch : (+r.dia||0) + 60); }
+$('#lay').addEventListener('change', e => {
+  const L = LAYOUT[room], t = e.target, i = t.dataset.i, k = t.dataset.k; if (i==null || !k) return;
+  const r = L.rows[+i], v = t.value==='' ? 0 : +t.value;
+  if (k==='type'){ r.type = t.value; if (r.type==='belt'){ r.len = r.len || 1000; } else { r.qty = r.qty || 1; r.dia = r.dia || 80; r.pitch = r.pitch ?? 0; } }
+  else r[k] = v;
+  layoutChanged();
+});
+$('#lay').addEventListener('click', e => {
+  const act = e.target.dataset?.act; if (!act) return;
+  const L = LAYOUT[room], i = +e.target.dataset.i, rows = L.rows, n = rows.length;
+  if (act==='ins'){ const c = JSON.parse(JSON.stringify(rows[i])); c.id = newId();
+    if (i < n-1) c.next = rows[i].next; else delete c.next;      // copy takes over the old link to the following row
+    rows[i].next = defaultNext(rows[i]); rows.splice(i+1, 0, c); }
+  else if (act==='del'){
+    if (n<=1) return;
+    const pos = positions(L), abs = {}; for (const k of Object.keys(L.sensors)) abs[k] = k==='entry' ? 0 : sensorAt(L, k, pos);
+    const gone = rows[i].id; rows.splice(i,1); if (rows.length) delete rows[rows.length-1].next;
+    const p2 = chainRaw(L);
+    for (const k of Object.keys(L.sensors)) if (L.sensors[k].ref===gone){   // re-tie sensor to a neighbour, keep its position
+      const shift = (()=>{ const e = edgeOf(L, p2, L.sensors.entry); return e==null ? 0 : e + (+L.sensors.entry.off||0); })();
+      L.sensors[k] = refFor(L, p2.map(([a,b])=>[a-shift,b-shift]), abs[k] ?? 0);
+    }
+  } else if (act==='up' || act==='down'){
+    const j = act==='up' ? i-1 : i+1; if (j<0 || j>=n) return;
+    [rows[i], rows[j]] = [rows[j], rows[i]]; [rows[i].next, rows[j].next] = [rows[j].next, rows[i].next];   // links stay with the slots
+    rows.forEach((r,k) => { if (k < rows.length-1 && r.next === undefined) r.next = defaultNext(r); }); delete rows[rows.length-1].next;
+  }
+  layoutChanged();
+});
+$('#laySens').addEventListener('change', e => { const k = e.target.dataset.s, f = e.target.dataset.f; if (!k) return;
+  LAYOUT[room].sensors[k][f] = f==='off' ? (+e.target.value||0) : e.target.value; layoutChanged(); });
+$('#layPts').addEventListener('change', e => { const k = e.target.dataset.pt; if (!k) return;
+  LAYOUT[room][k] = (k==='curtain' && e.target.value==='') ? null : +e.target.value; layoutChanged(); });
+$('#layWidth').addEventListener('change', e => { const k = e.target.dataset.pp; if (!k) return;
+  P[k] = +e.target.value || 0; const el = $(`#params [data-p="${k}"]`); if (el) el.value = P[k]; paramsChanged(); });
+$('#layAddDown').addEventListener('click', () => { const rows = LAYOUT[room].rows;
+  if (rows.length) rows[rows.length-1].next = defaultNext(rows[rows.length-1]); rows.push({id:newId(), type:'chain', qty:1, dia:63, pitch:254}); layoutChanged(); });
+$('#layAddUp').addEventListener('click', () => { const rows = LAYOUT[room].rows;
+  rows.unshift({id:newId(), type:'chain', qty:1, dia:63, pitch:254, next:254}); layoutChanged(); });
+function defNote(t, kind){ $('#defNote').textContent = t; toast(t, kind); }
+const paramsObj = () => { const par = {}; for (const [k] of PARAM_UI) if (k!=='h') par[k] = P[k]; return par; };
+function saveAll(){
+  try {
+    localStorage.setItem(USER_DEF_KEY, JSON.stringify(LAYOUT)); localStorage.setItem(PARAM_KEY, JSON.stringify(paramsObj()));
+    DEFAULT_CHAIN = JSON.parse(JSON.stringify(LAYOUT)); setDirty(false);
+    $('#defNote').textContent = `Saved layout (both rooms) + parameters · ${new Date().toLocaleTimeString()} (this browser). Use Download HTML to keep them inside the file.`;
+    toast('Saved: layout (both rooms) and parameters', 'ok');
+  } catch(e){ defNote('Could not save in this browser. Use Download HTML instead.', 'err'); }
+}
+$('#laySaveDef').addEventListener('click', saveAll);
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); saveAll(); } });
+$('#layLoadDef').addEventListener('click', () => { const d = readUserDefault();
+  LAYOUT[room] = JSON.parse(JSON.stringify((d || FACTORY_CHAIN)[room])); layoutChanged(); defNote(d ? 'Room reset to your saved default.' : 'No saved default yet — drawing values loaded.'); });
+$('#layReset').addEventListener('click', () => { LAYOUT[room] = JSON.parse(JSON.stringify(FACTORY_CHAIN[room])); layoutChanged(); defNote('Room reset to drawing values.'); });
+$('#parReset').addEventListener('click', () => {
+  for (const [k] of PARAM_UI) if (k!=='h') P[k] = FACTORY_P[k];
+  document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; });
+  paramsChanged(); defNote('Parameters reset to factory values. Press Save to keep them.');
+});
+$('#layDownload').addEventListener('click', () => {
+  const scripts = [...document.scripts].map(sc => sc.textContent);
+  const src = scripts.find(t => t.includes('@@BAKED_DEFAULT@@'));
+  if (!src){ defNote('Download failed (script not found).'); return; }
+  const baked = src.replace(/let BAKED_DEFAULT = [^\n]*?\/\*@@BAKED_DEFAULT@@\*\//, () => 'let BAKED_DEFAULT = ' + JSON.stringify(LAYOUT) + '; /*@@BAKED_DEFAULT@@*/')
+                   .replace(/let BAKED_PARAMS = [^\n]*?\/\*@@BAKED_PARAMS@@\*\//, () => 'let BAKED_PARAMS = ' + JSON.stringify(paramsObj()) + '; /*@@BAKED_PARAMS@@*/');
+  const clone = document.documentElement.cloneNode(true);
+  clone.removeAttribute('data-theme');
+  for (const sc of clone.querySelectorAll('script')) if (sc.textContent.includes('@@BAKED_DEFAULT@@')) sc.textContent = baked;
+  clone.querySelector('body').classList.remove('settings', 'master');   // the new file opens on the simulator
+  const ct = clone.querySelector('#toast'); if (ct){ ct.className = ''; ct.removeAttribute('style'); ct.textContent = ''; }   // don't bake a visible toast into the file
+  for (const id of ['#lay tbody','#laySens tbody','#res tbody','#plc tbody','#log','#sensGrid','#params','#layPts','#preset','#pvPreset','#pvInfo','#mt thead','#mt tbody','#mtIns']) { const el = clone.querySelector(id); if (el) el.innerHTML = ''; }
+  const html = '<!doctype html>\n' + clone.outerHTML;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], {type:'text/html'}));
+  a.download = 'flow-coater-simulator.html'; document.body.appendChild(a); a.click(); a.remove();
+  defNote('Downloaded — the new file opens with your layout and parameters as its default on any computer.'); });
+$('#layExport').addEventListener('click', () => { const t = $('#layJson'); t.style.display='block'; t.value = JSON.stringify({...LAYOUT, params:paramsObj()}, null, 1); t.select(); });
+$('#layImport').addEventListener('click', () => { const t = $('#layJson');
+  if (t.style.display==='none' || !t.value.trim()){ t.style.display='block'; t.value=''; t.placeholder='Paste exported JSON here, then press Import JSON again'; return; }
+  try { const o = JSON.parse(t.value); if (!o.top || !o.base) throw new Error('needs "top" and "base"'); LAYOUT = normLayout(o);
+    if (o.params){ applyParams(o.params); document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; }); paramsChanged(); }
+    layoutChanged(); t.style.display='none'; }
+  catch(err){ t.value = 'Import failed: ' + err.message + '\n\n' + t.value; } });
+
+/* ---------------- params & misc ---------------- */
+function buildSensorGrid(){
+  let h = '<span></span>' + SEC.map(s=>`<span class="h" style="grid-column:span 2">${s}</span>`).join('');
+  for (const p of POS){ h += `<span>${p}</span>`; for (const sc of SEC) for (const ab of ['A','B']) h += `<button class="sbtn" data-k="${p}-${sc}-${ab}">${ab}</button>`; }
+  $('#sensGrid').innerHTML = h;
+  $('#sensGrid').addEventListener('click', e => { const k = e.target.dataset?.k; if (!k) return; F.stuck.has(k) ? F.stuck.delete(k) : F.stuck.add(k);
+    log('INFO','SIM', `${F.stuck.has(k)?'Fault':'Cleared'}: sensor ${k} stuck OFF`); });
+}
+function buildParams(){
+  // one card per group; "Name (unit, hint)" labels split into name · hint · unit
+  const fac = k => { const o = PARAM_UI.find(p => p[0]===k)?.[2]; return o ? (o.find(([v]) => v===FACTORY_P[k])?.[1] ?? FACTORY_P[k]) : FACTORY_P[k]; };
+  const rv = k => `<button type="button" class="rv" data-rv="${k}" title="Back to the factory value">reset to ${fac(k)}</button>`;
+  const row = ([k,l,o]) => {
+    if (o) return `<label class="prow sel"><span class="pl">${l}${uncTag(k)}${rv(k)}</span><select data-p="${k}" title="${l}">${o.map(([v,n])=>`<option value="${v}" ${P[k]===v?'selected':''}>${n}</option>`).join('')}</select></label>`;
+    const m = l.match(/^(.*?)\s*\(([^()]*)\)\s*(\*?)$/), name = m ? m[1]+m[3] : l, [unit, ...hint] = m ? m[2].split(/,\s*/) : [''];
+    return `<label class="prow" title="${l}"><span class="pl">${name}${uncTag(k)}${hint.length ? `<small>${hint.join(', ')}</small>` : ''}${rv(k)}</span><span class="pi"><input type="number" step="any" data-p="${k}" value="${P[k]}"><span class="u">${unit}</span></span></label>`;
+  };
+  const groups = []; for (const p of PARAM_UI) p[0]==='h' ? groups.push({h:p[1], rows:[]}) : groups.at(-1).rows.push(p);
+  $('#params').innerHTML = groups.map(g => { const [t, sub] = g.h.split(' — ');
+    return `<div class="card"><h2>${t}${sub ? ` <span class="r">${sub}</span>` : ''}</h2>${g.rows.map(row).join('')}</div>`; }).join('');
+  $('#params').addEventListener('change', e => { const k = e.target.dataset.p; if (!k) return;
+    P[k] = e.target.tagName==='SELECT' ? e.target.value : +e.target.value; paramsChanged(); });
+  $('#params').addEventListener('click', e => { const k = e.target.closest('[data-rv]')?.dataset.rv; if (!k) return;
+    e.preventDefault(); P[k] = FACTORY_P[k]; const el = $(`#params [data-p="${k}"]`); if (el) el.value = P[k]; paramsChanged(); });
+  markParams();
+}
+/* tint the rows that differ from the factory value and count them on the tab */
+function markParams(){
+  const diff = new Set(paramDiff());
+  document.querySelectorAll('#params [data-p]').forEach(el => el.closest('.prow').classList.toggle('chg', diff.has(el.dataset.p)));
+  $('#parCnt').textContent = diff.size ? ` · ${diff.size} changed` : '';
+}
+function paramsChanged(){ updateSECY(); G = geom(); if (typeof buildLayoutEditor==='function' && $('#layWidth')) buildLayoutEditor(); $('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1); markParams(); setDirty(true); }
+
+/* ---------------- wiring ---------------- */
+let running = true, simSpeed = 2;
+$('#preset').innerHTML = [...new Set(PRESETS.map(p=>p.grp))].map(g => `<optgroup label="${g}">` +
+  PRESETS.map((p,i)=> p.grp===g ? `<option value="${i}">${p.name}${p.tag ? `  [${p.tag}]` : ''}</option>` : '').join('') + '</optgroup>').join('')
+  + '<option value="custom">Custom…</option>';
+const DEF = PRESETS.findIndex(p=>p.name==='S 84×120');   // most-produced size (info/Glass_size.xlsx › Size Insight)
+$('#preset').value = String(DEF); presetToR(DEF); rToForm(); HMI = hmiFrom(R);
+$('#preset').addEventListener('change', e => { if (e.target.value!=='custom'){ const T={}; presetToR(+e.target.value, T); rToForm(T); } });
+['#rW','#rLen','#rNLen','#rAcross','#rAlign'].forEach(id => $(id).addEventListener('input', () => { $('#preset').value='custom'; }));
+$('#rN').addEventListener('input', e => { R.n = Math.max(0, Math.round(+e.target.value||0)); });   // load count applies directly
+$('#confirmBtn').addEventListener('click', () => {
+  if (sizeSig(formSize()) === sizeSig(R)) return;
+  const prev = HMI.name; rFromForm(); HMI = hmiFrom(R);
+  const job = Math.max(0, +$('#rJob').value || 0);
+  if (job > 0){
+    S.jobStart = S.t; S.jobUntil = S.t + job*60;
+    log('MOTION','HMI',`JOB CHANGE ${prev} → ${R.name}: no feeding for ${job} min (until sim ${fmtClock(S.jobUntil)})`);
+  } else log('INFO','HMI',`Size confirmed: ${R.name}`);
+});
+$('#rNote').addEventListener('click', e => { if (e.target.id==='jobSkip'){ S.jobUntil = S.t; } });
+
+/* settings page */
+$('#pvPreset').innerHTML = $('#preset').innerHTML;
+function pvFromHmi(){
+  $('#pvPreset').value = $('#preset').value; const f = formSize();
+  $('#pvW').value = f.w; $('#pvL').value = f.len; $('#pvAcross').value = f.nAcross; $('#pvNLen').value = f.nLen; $('#pvAlign').value = f.align; $('#pvGapX').value = f.gapX;
+}
+let pvInit = false;
+/* pages: 'sim' (default), 'settings', 'master' — one body class each */
+const pageIs = p => document.body.classList.contains(p);
+function setPage(p){
+  for (const k of ['settings','master']) document.body.classList.toggle(k, p===k);
+  window.scrollTo(0, 0); pvMiniCheck();
+  if (p==='settings' && !pvInit){ pvInit = true; pvFromHmi(); pvSetPos(mm(predict(pvSize()).accel)); }
+  if (p==='master'){ MT_SIG = ''; buildMaster(); }
+}
+const openSettings = v => setPage(v ? 'settings' : 'sim');
+$('#setBtn').addEventListener('click', () => setPage(pageIs('settings') ? 'sim' : 'settings'));
+$('#setBack').addEventListener('click', () => setPage('sim'));
+$('#mtBtn').addEventListener('click', () => setPage(pageIs('master') ? 'sim' : 'master'));
+$('#mtBack').addEventListener('click', () => setPage('sim'));
+
+/* settings tabs — the open tab is remembered per browser */
+function setTab(t){
+  if (!document.querySelector(`.spanel[data-panel="${t}"]`)) t = 'rows';
+  document.querySelectorAll('.stabs [data-tab]').forEach(b => { const on = b.dataset.tab===t;
+    b.classList.toggle('sel', on); b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; });
+  document.querySelectorAll('.spanel').forEach(p => p.hidden = p.dataset.panel!==t);
+  try { localStorage.setItem('setTab', t); } catch(e){}
+}
+document.querySelectorAll('.stabs [data-tab]').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+/* arrow keys move between tabs (and between the two rooms) */
+function arrowNav(e, items, cur, pick){
+  const i = items.indexOf(cur); if (i < 0) return;
+  const j = e.key==='ArrowRight' || e.key==='ArrowDown' ? (i+1) % items.length : e.key==='ArrowLeft' || e.key==='ArrowUp' ? (i-1+items.length) % items.length
+          : e.key==='Home' ? 0 : e.key==='End' ? items.length-1 : -1;
+  if (j < 0) return; e.preventDefault(); pick(items[j]); items[j].focus();
+}
+$('.stabs .tabl').addEventListener('keydown', e => arrowNav(e, [...document.querySelectorAll('.stabs [data-tab]')], e.target.closest('[data-tab]'), b => setTab(b.dataset.tab)));
+try { setTab(localStorage.getItem('setTab') || 'rows'); } catch(e){ setTab('rows'); }
+
+/* floating mini preview: a scaled copy of #pv, shown as soon as the top of #pv slides under the sticky header */
+const pvMini = $('#pvMini'), pvMiniCv = $('#pvMiniCv'), pmctx = pvMiniCv.getContext('2d');
+function pvMiniCheck(){
+  const hidden = pageIs('settings') && pv.getBoundingClientRect().top < $('#hdr').getBoundingClientRect().bottom - 4;
+  pvMini.classList.toggle('on', hidden);
+}
+addEventListener('scroll', pvMiniCheck, {passive:true}); addEventListener('resize', pvMiniCheck);
+try { pvMini.classList.toggle('min', localStorage.getItem('pvMiniMin')==='1'); } catch(e){}
+const pvMiniBack = () => pv.scrollIntoView({behavior:'smooth', block:'center'});
+$('#pvMiniTop').addEventListener('click', pvMiniBack);
+pvMiniCv.addEventListener('click', pvMiniBack);
+$('#pvMiniMin').addEventListener('click', () => {
+  const m = pvMini.classList.toggle('min'); $('#pvMiniMin').textContent = m ? '+' : '–';
+  try { localStorage.setItem('pvMiniMin', m ? '1' : '0'); } catch(e){}
+});
+$('#pvMiniMin').textContent = pvMini.classList.contains('min') ? '+' : '–';
+function drawPvMini(){
+  if (!pvMini.classList.contains('on') || pvMini.classList.contains('min') || !pv.width) return;
+  const dpr = window.devicePixelRatio||1, w = pvMiniCv.clientWidth, h = Math.round(w*pv.height/pv.width);
+  if (pvMiniCv.width !== Math.round(w*dpr) || pvMiniCv.height !== Math.round(h*dpr)){ pvMiniCv.width = Math.round(w*dpr); pvMiniCv.height = Math.round(h*dpr); pvMiniCv.style.height = h+'px'; }
+  pmctx.imageSmoothingQuality = 'high';
+  pmctx.drawImage(pv, 0, 0, pvMiniCv.width, pvMiniCv.height);
+}
+
+/* master table: every production size through predict() / coverage() with the current room, layout and parameters */
+let MT_SIG = '', MT_SORT = {k:null, asc:true}, MT_GRP = 'all';
+const MT_COLS = [   // [key, header, unit, cell renderer]
+  ['name','Size','W×L in · across×flow'], ['on','Sensors ON','L C R'], ['n','Sheets','pcs'], ['Lin','Load L','in'], ['Lmm','Load L','mm'],
+  ['Gs','Gₛ','slow p'], ['K','K','p'], ['Xp','X','high p'], ['Xmm','High speed X','mm'],
+  ['up','Speed-up at','mm from Entry'], ['base','Back to base at','mm from Entry'], ['vsExit','vs Exit','mm'], [null,'High-speed window','along the line'],
+  ['cov','Curtain @ high','% of glass'], ['hiT','High speed','s'], ['inRoom','In room','s'], ['m2h','Feed','≈ m²/h'], ['margin','Charge margin','slow p'], [null,'','']
+];
+function masterRows(){
+  const gx = +$('#rGapX').value||0, gy = +$('#rGapY').value||0;
+  return PRESETS.map((pr,i) => {
+    const T = {}; presetToR(i, T); T.gapX = gx; T.gapY = gy;
+    const p = predict(T), got = coverage(T), span = lNet(T);
+    const area = T.nAcross*T.nLen*T.w*T.len*0.00064516, cycle = (span + gy)/G.vB;
+    const d = { i, name:pr.name, grp:pr.grp, tag:pr.tag||'', on:pr.on, covOK:[...pr.on].every(c=>got.includes(c)), n:T.nAcross*T.nLen,
+      Lin:p.Ln, Lmm:mm(p.Ln), Gs:Math.round(p.Gs), K:p.K, Xp:Math.round(p.Xp), Xmm:mm(p.Xin), up:mm(p.accel), late:p.late,
+      base:mm(p.decel), vsExit:mm(p.decel - G.exit), cov:p.cov, hiT:p.hiT, inRoom:p.inRoom, m2h:area/cycle*3600, margin:Math.floor(P.chargeLong - span/P.slowRes) };
+    d.issue = d.cov < 99.5 || d.late || !d.covOK || d.margin < 0;
+    return d;
+  });
+}
+const lcr = s => s.split('').map(c=>['L','C','R'][c-1]).join(' ') || '—';
+const short = n => n.replace(' · ', ' ');
+function buildInsights(rows){
+  const by = (k, dir=1) => [...rows].sort((a,b) => dir*(a[k]-b[k]));
+  const list = (rs, f) => rs.slice(0,4).map(f).join(', ') + (rs.length > 4 ? ` +${rs.length-4} more` : '');
+  const card = (cls, k, v, d) => `<div class="c ${cls}"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`;
+  const out = [];
+  const thin = rows.filter(r => r.cov < 99.5).sort((a,b)=>a.cov-b.cov);
+  out.push(thin.length
+    ? card('bad', '⚠ Coated partly at base speed', `${thin.length} of ${rows.length} sizes`, `Part of the glass passes the curtain after the room is back to base → thick film. Worst: ${list(thin, r=>`<b>${short(r.name)}</b> ${r.cov.toFixed(0)}%`)}`)
+    : card('good', '✓ Curtain at high speed', `all ${rows.length} sizes 100%`, 'Every size passes the curtain completely at high speed.'));
+  const bad = rows.filter(r => !r.covOK);
+  out.push(bad.length
+    ? card('bad', '⚠ ON sensor not covered', `${bad.length} sizes`, `The glass doesn't reach every sensor that is ON: ${list(bad, r=>`<b>${short(r.name)}</b> (ON ${lcr(r.on)})`)}`)
+    : card('good', '✓ Sensors', 'every ON sensor covered', 'For every size the glass covers all sensors switched ON in the production list.'));
+  const up = by('up');
+  out.push(card('info', '▲ Speed-up point', `${up[0].up} → ${up[up.length-1].up} mm`,
+    `Earliest <b>${short(up[0].name)}</b>, latest <b>${short(up[up.length-1].name)}</b> — a spread of <b>${up[up.length-1].up - up[0].up} mm</b> along the line. Inlet is at ${mm(G.inlet)} mm.`));
+  const late = rows.filter(r => r.late);
+  out.push(late.length
+    ? card('wrn', '⏱ PLC knows L late', `${late.length} sizes`, `L is only known when the tail clears Entry, so the speed-up comes after the formula point: ${list(late, r=>`<b>${short(r.name)}</b>`)}`)
+    : card('good', '✓ Speed-up timing', 'no late sizes', 'Every size reaches the formula speed-up point after the PLC knows L.'));
+  const ve = by('vsExit'), before = rows.filter(r => r.vsExit < 0).length;
+  out.push(card('info', '▼ Back to base vs Exit', `${fmtRel(ve[0].vsExit/IN2MM)} … ${fmtRel(ve[ve.length-1].vsExit/IN2MM)}`,
+    `<b>${before}</b> sizes return to base before the glass front reaches Exit, <b>${rows.length-before}</b> after it. Closest to Exit: <b>${short([...rows].sort((a,b)=>Math.abs(a.vsExit)-Math.abs(b.vsExit))[0].name)}</b>.`));
+  const x = by('Xmm');
+  out.push(card('info', '⇢ High-speed distance X', `${x[0].Xmm} – ${x[x.length-1].Xmm} mm`,
+    `Shortest <b>${short(x[0].name)}</b> (${f2(x[0].hiT)} s), longest <b>${short(x[x.length-1].name)}</b> (${f2(x[x.length-1].hiT)} s). X = 1110 − L + ⅔·L₁ − K (L₁ = 1st sheet; single sheet: 1110 − ⅓L − K), so longer glass → shorter X.`));
+  const m = by('margin');
+  out.push(card(m[0].margin < 0 ? 'bad' : m[0].margin < 40 ? 'wrn' : 'good', '⛔ Charge Too Long margin', `${m[0].margin} p`,
+    `Tightest: <b>${short(m[0].name)}</b> (${m[0].Lin.toFixed(1)} in vs limit ${(P.chargeLong*P.slowRes).toFixed(1)} in). ${m[0].margin < 0 ? 'This size stops the line.' : 'All sizes are within the limit.'}`));
+  const t = by('m2h', -1);
+  out.push(card('info', '▤ Feed rate (≈)', `${t[t.length-1].m2h.toFixed(0)} – ${t[0].m2h.toFixed(0)} m²/h`,
+    `Most glass per hour: <b>${short(t[0].name)}</b>; least: <b>${short(t[t.length-1].name)}</b>. Base speed ${P.vBaseMM} mm/s with the ${+$('#rGapY').value||0} in load gap.`));
+  $('#mtIns').innerHTML = out.join('');
+}
+function buildMaster(){
+  const rows = masterRows();
+  $('#mtRoom').textContent = room==='top' ? 'Top' : 'Base';
+  buildInsights(rows);
+  $('#mt thead').innerHTML = '<tr>' + MT_COLS.map(([k,h,u],c) => `<th class="${c===0||c===1||c===12?'l':''}${k && MT_SORT.k===k ? ' sorted'+(MT_SORT.asc?' asc':'') : ''}" ${k?`data-k="${k}"`:''}>${h}<span class="u">${u}</span></th>`).join('') + '</tr>';
+  let rs = rows.filter(r => (MT_GRP==='all' || r.grp===MT_GRP) && (!$('#mtIssues').checked || r.issue));
+  if (MT_SORT.k){ const k = MT_SORT.k, s = MT_SORT.asc ? 1 : -1;
+    rs.sort((a,b) => typeof a[k]==='string' ? s*a[k].localeCompare(b[k]) : s*((a[k]??-1e9)-(b[k]??-1e9))); }
+  const x1 = Math.max(G.exit, G.wallOut, ...rows.map(r=>r.base/IN2MM)) * 1.03, pct = v => clamp(v/x1*100, 0, 100).toFixed(1) + '%';
+  const cur = HMI.name;
+  $('#mt tbody').innerHTML = rs.map(r => `<tr class="${r.name===cur?'cur':''}">
+    <td class="l">${r.name}${r.tag?`<span class="tag">${r.tag}</span>`:''}</td>
+    <td class="l">${lcr(r.on)} ${r.covOK?'':'<span class="fail" title="ON sensor not covered by the glass">✗</span>'}</td>
+    <td>${r.n}</td><td>${r.Lin.toFixed(1)}</td><td>${r.Lmm}</td><td>${r.Gs}</td><td>${r.K}</td><td>${r.Xp}</td><td><b>${r.Xmm}</b></td>
+    <td class="hi">${r.up}${r.late?'<span class="warn" title="PLC knows L late">*</span>':''}</td><td class="lo">${r.base}</td><td>${fmtRel(r.vsExit/IN2MM)}</td>
+    <td class="l"><div class="win" title="High speed ${r.up} → ${r.base} mm · Inlet ${mm(G.inlet)} · curtain ${mm(G.curtain)} · Exit ${mm(G.exit)}">
+      <b style="left:${pct(r.up/IN2MM)};width:calc(${pct(r.base/IN2MM)} - ${pct(r.up/IN2MM)})"></b>
+      <i style="left:${pct(G.inlet)}"></i><i class="c" style="left:${pct(G.curtain)}"></i><i class="x" style="left:${pct(G.exit)}"></i></div></td>
+    <td><span class="${r.cov>=99.5?'pass':r.cov>=80?'warn':'fail'}">${r.cov.toFixed(0)}%</span></td><td>${f2(r.hiT)}</td><td>${f2(r.inRoom)}</td>
+    <td>${r.m2h.toFixed(0)}</td><td class="${r.margin<=0?'fail':r.margin<40?'warn':''}">${r.margin}</td>
+    <td><button class="sm" data-hmi="${r.i}" title="Load this size into the HMI panel">→ HMI</button></td></tr>`).join('');
+  $('#mtCount').textContent = `· ${rs.length} of ${rows.length}`;
+  return rows;
+}
+/* rebuild only when something that feeds the numbers changed */
+function masterTick(){
+  const sig = JSON.stringify([room, P, LAYOUT[room], $('#rGapX').value, $('#rGapY').value, HMI.name, MT_SORT, MT_GRP, $('#mtIssues').checked]);
+  if (sig !== MT_SIG){ MT_SIG = sig; buildMaster(); }
+}
+$('#mt').addEventListener('click', e => {
+  const th = e.target.closest('th[data-k]');
+  if (th){ const k = th.dataset.k; MT_SORT = MT_SORT.k===k ? {k, asc:!MT_SORT.asc} : {k, asc:true}; masterTick(); return; }
+  const b = e.target.closest('[data-hmi]'); if (!b) return;
+  $('#preset').value = b.dataset.hmi; $('#preset').dispatchEvent(new Event('change')); setPage('sim');
+});
+$('#mtGrp').addEventListener('click', e => { const g = e.target.dataset?.g; if (!g) return; MT_GRP = g;
+  document.querySelectorAll('#mtGrp button').forEach(b => b.classList.toggle('sel', b.dataset.g===g)); masterTick(); });
+$('#mtIssues').addEventListener('change', masterTick);
+$('#mtCsv').addEventListener('click', () => {
+  const cols = [['name','Size'],['tag','Tag'],['on','Sensors ON'],['n','Sheets'],['Lin','Load L (in)'],['Lmm','Load L (mm)'],['Gs','Gs (slow p)'],['K','K'],['Xp','X (high p)'],['Xmm','X (mm)'],
+    ['up','Speed-up front (mm from Entry)'],['late','PLC knows L late'],['base','Back-to-base front (mm from Entry)'],['vsExit','Back to base vs Exit (mm)'],['cov','Curtain at high (%)'],
+    ['hiT','High speed (s)'],['inRoom','In room (s)'],['m2h','Feed (m2/h)'],['margin','Charge Too Long margin (slow p)'],['covOK','ON sensors covered']];
+  const q = v => { const s = typeof v==='number' ? (Number.isInteger(v) ? String(v) : v.toFixed(2)) : v==null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
+  const csv = [cols.map(c=>q(c[1])).join(','), ...masterRows().map(r => cols.map(([k]) => q(k==='on' ? lcr(r.on) : r[k])).join(','))].join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿'+csv], {type:'text/csv'}));
+  a.download = `flow-coater-master-${room}.csv`; document.body.appendChild(a); a.click(); a.remove();
+});
+$('#pvPreset').addEventListener('change', e => { if (e.target.value==='custom') return; const T = {}; presetToR(+e.target.value, T);
+  $('#pvW').value = T.w; $('#pvL').value = T.len; $('#pvAcross').value = T.nAcross; $('#pvNLen').value = T.nLen; $('#pvAlign').value = T.align; $('#pvGapX').value = T.gapX; });
+['#pvW','#pvL','#pvAcross','#pvNLen','#pvAlign','#pvGapX'].forEach(id => $(id).addEventListener('input', () => { $('#pvPreset').value = 'custom'; }));
+$('#pvPos').addEventListener('input', e => pvSetPos(+e.target.value));
+$('#pvPosN').addEventListener('change', e => pvSetPos(+e.target.value));
+$('#pvHmi').addEventListener('click', pvFromHmi);
+$('#pvPlay').addEventListener('click', e => { pvAnim = !pvAnim; e.target.textContent = pvAnim ? '❚❚ Stop' : '▶ Move along line';
+  if (pvAnim && +$('#pvPos').value >= pvRange()[1]) pvSetPos(pvRange()[0]); });
+document.querySelectorAll('[data-pv]').forEach(b => b.addEventListener('click', () => {
+  const p = predict(pvSize()), k = b.dataset.pv;
+  pvAnim = false; $('#pvPlay').textContent = '▶ Move along line';
+  pvSetPos(mm(k==='entry' ? 0 : k==='inlet' ? G.inlet : k==='exit' ? G.exit : k==='accel' ? p.accel : p.decel)); }));
+const ICON = {
+  pause:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1"/><rect x="14" y="4.5" width="4.5" height="15" rx="1"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>' };
+function syncRunBtn(){ const b = $('#runBtn'); if (b._r === running) return; b._r = running;
+  b.classList.toggle('running', running); b.classList.toggle('paused', !running);
+  b.querySelector('.ic').innerHTML = running ? ICON.pause : ICON.play; b.querySelector('.tx').textContent = running ? 'Pause' : 'Run'; }
+function setRunning(v){ running = v; syncRunBtn(); }
+$('#runBtn').addEventListener('click', () => setRunning(!running));
+$('#csvBtn').addEventListener('click', e => { e.preventDefault(); downloadCSV(); });   // inside a <summary>: don't toggle the card
+try { $('#resCard').open = localStorage.getItem('fcsim.resOpen')==='1'; } catch(e){}
+$('#resCard').addEventListener('toggle', () => { try { localStorage.setItem('fcsim.resOpen', $('#resCard').open ? '1' : '0'); } catch(e){} });
+$('#uncBtn').addEventListener('click', () => { setPage('sim'); const d = $('#logicDet'); d.open = true; d.scrollIntoView({behavior:'smooth', block:'start'}); });
+$('#blPin').addEventListener('click', () => { BL[room] = { P:{...P}, L:JSON.parse(JSON.stringify(LAYOUT[room])), at:new Date() };
+  toast(`Baseline pinned for the ${room==='top'?'Top':'Base'} room. Change parameters or the layout to compare.`, 'ok'); });
+$('#blClr').addEventListener('click', () => { BL[room] = null; });
+$('#krFoot').addEventListener('click', e => { if (e.target.dataset.go){ setPage('settings'); setTab(e.target.dataset.go); } });
+$('#stepBtn').addEventListener('click', () => { setRunning(false); for (let i=0;i<50;i++) step(0.01); });
+$('#resetBtn').addEventListener('click', () => { G = geom(); newState(); });
+$('#simSpeed').addEventListener('change', e => simSpeed = +e.target.value);
+function setRoom(r){ room = r;
+  document.querySelectorAll('#roomSeg button').forEach(b => { const on = b.dataset.r===r;
+    b.classList.toggle('sel', on); b.setAttribute('aria-checked', on); b.tabIndex = on ? 0 : -1; });
+  const nm = (r==='top'?'Top':'Base')+' paint room';
+  $('#roomLbl').textContent = nm; cv.setAttribute('aria-label', `Plan view of the ${nm}: rollers, sensors and glass moving left to right`);
+  G = geom(); newState(); buildLayoutEditor(); paintLegend();
+  document.documentElement.style.setProperty('--roomc', PAINT[r]); }
+$('#roomSeg').addEventListener('click', e => { const r = e.target.closest('[data-r]')?.dataset.r; if (r) setRoom(r); });
+$('#roomSeg').addEventListener('keydown', e => arrowNav(e, [...document.querySelectorAll('#roomSeg [data-r]')], e.target.closest('[data-r]'), b => setRoom(b.dataset.r)));
+$('#estopBtn').addEventListener('click', () => { log('HARD','SAFETY','EMERGENCY STOP pressed');
+  if (S.SI.loads.some(L=>L.state==='HIGH')) requestFinishStop(); else stopNow(); });
+$('#ackBtn').addEventListener('click', () => { S.run = true; S.stopReq = null; S.roomV = G.vB;
+  S.latched = new Set([...S.latched].filter(k=>k.startsWith('soft'))); log('INFO','SAFETY','Line restarted'); });
+document.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { const f = b.dataset.f;
+  if (f==='break') breakGlass();
+  else if (f==='missing') { S.pendMissing = true; log('INFO','SIM','Next load will miss its right-most sheet'); }
+  else if (f==='overlap') { S.pendOverlap = true; log('INFO','SIM','Next load will overlap the previous one'); }
+  else { F[f] = !F[f]; log('INFO','SIM',`${F[f]?'Fault':'Cleared'}: ${b.textContent}`); } }));
+$('#mitsuOn').addEventListener('change', e => P.mitsu = e.target.checked);
+$('#ilk').addEventListener('change', e => P.interlock = e.target.checked);
+$('#motOnly').addEventListener('change', () => S.logDirty = true);
+$('#clrLog').addEventListener('click', () => { S.log = []; S.logDirty = true; });
+$('#themeBtn').addEventListener('click', () => { const r = document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark'; readColors(); paintLegend(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readColors(); paintLegend(); });
+document.addEventListener('keydown', e => { if (e.key==='Escape' && (pageIs('settings') || pageIs('master'))) setPage('sim'); });
+let spaceTaken = false;   // the keyup half of a Space we used must not click the focused button
+document.addEventListener('keyup', e => { if (e.code==='Space' && spaceTaken){ e.preventDefault(); spaceTaken = false; } });
+/* Space = run / pause, S = step, [ ] = slower / faster. Typing in a field is never hijacked; a button reached with the
+   keyboard keeps its own Space, a button that only has focus from a mouse click does not (no double action). */
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const a = document.activeElement;
+  if (a && (a.closest('input,select,textarea,[contenteditable]'))) return;
+  if (a && a.closest('button,summary,a') && a.matches(':focus-visible')) return;
+  if (e.code==='Space'){ e.preventDefault(); if (!e.repeat) setRunning(!running); spaceTaken = true; return; }
+  if (pageIs('settings') || pageIs('master')) return;
+  if (e.key==='s' || e.key==='S'){ e.preventDefault(); $('#stepBtn').click(); }
+  else if (e.key==='[' || e.key===']'){ const sel = $('#simSpeed'), i = clamp(sel.selectedIndex + (e.key===']' ? 1 : -1), 0, sel.options.length-1);
+    if (i !== sel.selectedIndex){ sel.selectedIndex = i; simSpeed = +sel.value; toast(`Simulation speed ${sel.options[i].text}`); } }
+});
+
+$('#roomLbl').textContent = 'Top paint room';
+G = geom(); newState(); buildSensorGrid(); buildParams(); buildLayoutEditor(); readColors(); paintLegend();
+$('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1);
+syncScaleBtn();
+$('#scaleBtn').addEventListener('click', () => { trueScale = !trueScale; try { localStorage.setItem('fcsim.trueScale', trueScale ? '1' : '0'); } catch(e) {} syncScaleBtn(); });
+let lastT = performance.now(), lastUI = 0;
+function frame(now){
+  const rdt = Math.min(0.1, (now-lastT)/1000); lastT = now;
+  if (running){ let t = rdt*simSpeed; while (t > 1e-6){ const d = Math.min(0.01, t); step(d); t -= d; } }
+  if (pageIs('settings')){   // simulator keeps stepping; only the visible page is drawn
+    if (pvAnim){ const [a,b] = pvRange(), v = +$('#pvPos').value + P.vHighMM*0.5*rdt; pvSetPos(v > b ? a : v); }
+    drawPreview(); drawPvMini();
+  } else if (!pageIs('master')){ draw(); drawTrend(); }
+  if (now - lastUI > 200){ updateUI(); if (pageIs('master')) masterTick(); lastUI = now; }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.__sim = { PRESETS, coverage, lateral, step, get S(){return S}, P, R, predict, presetToR, newState, getLayout:()=>LAYOUT,
+  geom:()=>G=geom(), setRoom, setHMI:()=>{HMI=hmiFrom(R);} };
+</script>
+
+
+</body></html>

@@ -1,0 +1,1299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flow Coater Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e9ece9; --panel:#f8f9f8; --panel2:#f0f2f0; --ink:#13171a; --muted:#5b646a; --faint:#8b9398;
+  --line:#d3d8d4; --line2:#bfc6c1;
+  --base:#b86e08; --high:#0a86a8; --alarm:#cc2f27; --ok:#2b8548; --soft:#a67c00;
+  --glass:rgba(120,170,215,.40); --glassEdge:#3f75a6; --paint:#2f5f73; --thick:#d4592a;
+  --free:#a5ada9; --chain:#d6a23a; --head:#e2557f; --inv:#7d58b3; --belt:#3d9963; --beltDark:#2c7a4c; --freeNew:#2f6fe0; --room:#2c66d8;
+  --canvas:#f3f5f3; --curtain:#2f5f73;
+  --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace; --sans:'IBM Plex Sans',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c0f11; --panel:#14181b; --panel2:#101316; --ink:#e3e8e6; --muted:#8c969c; --faint:#5f686e;
+    --line:#232a2e; --line2:#30383d;
+    --base:#f2a33c; --high:#3cc3e4; --alarm:#ff5b50; --ok:#4ec27b; --soft:#e4bb3d;
+    --glass:rgba(140,190,235,.26); --glassEdge:#80b4e2; --paint:#5f9bb0; --thick:#ff7a3d;
+    --free:#4d555a; --chain:#9a7426; --head:#a8405f; --inv:#5f4590; --belt:#2a6e47; --beltDark:#1f5536; --freeNew:#3a68c8; --room:#4f86f0;
+    --canvas:#101417; --curtain:#6aa6bb;
+  }
+}
+:root[data-theme="dark"]{
+    --bg:#0c0f11; --panel:#14181b; --panel2:#101316; --ink:#e3e8e6; --muted:#8c969c; --faint:#5f686e;
+    --line:#232a2e; --line2:#30383d;
+    --base:#f2a33c; --high:#3cc3e4; --alarm:#ff5b50; --ok:#4ec27b; --soft:#e4bb3d;
+    --glass:rgba(140,190,235,.26); --glassEdge:#80b4e2; --paint:#5f9bb0; --thick:#ff7a3d;
+    --free:#4d555a; --chain:#9a7426; --head:#a8405f; --inv:#5f4590; --belt:#2a6e47; --beltDark:#1f5536; --freeNew:#3a68c8; --room:#4f86f0;
+    --canvas:#101417; --curtain:#6aa6bb;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans);-webkit-font-smoothing:antialiased}
+.mono{font-family:var(--mono)}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+h1{font-size:18px;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:5px 10px;min-width:92px}
+.chip .k{font:500 10px/1 var(--mono);letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.chip .v{font:600 15px/1.25 var(--mono);margin-top:3px;white-space:nowrap}
+.v.high{color:var(--high)} .v.base{color:var(--base)} .v.alarm{color:var(--alarm)} .v.ok{color:var(--ok)}
+main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;padding:14px 20px 20px}
+@media (max-width:1100px){main{grid-template-columns:minmax(0,1fr)}}
+main>section,main>aside{min-width:0}
+@media (max-width:600px){main{padding:12px 16px}header{padding:14px 16px}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:14px}
+.card>h2,.card>summary{margin:0;padding:9px 12px;font:600 11px/1.2 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card>summary{cursor:pointer;list-style:none} .card>summary::-webkit-details-marker{display:none}
+.card span.r{font-weight:500;letter-spacing:.02em;text-transform:none}
+.pad{padding:12px}
+canvas{display:block;width:100%}
+#cv{background:var(--canvas);cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:8px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+#hover{font:12px var(--mono);padding:6px 12px;border-top:1px solid var(--line);min-height:29px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:500 13px var(--sans);border:1px solid var(--line2);background:var(--panel2);color:var(--ink);border-radius:6px;padding:7px 11px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.primary{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+button.danger{background:var(--alarm);border-color:var(--alarm);color:#fff;font-weight:700;letter-spacing:.04em}
+button.on{outline:2px solid var(--alarm);outline-offset:-2px;color:var(--alarm)}
+button.sm{padding:3px 8px;font-size:12px}
+button:disabled{opacity:.4;cursor:not-allowed}
+select,input[type=number],textarea{font:13px var(--mono);background:var(--panel2);color:var(--ink);border:1px solid var(--line2);border-radius:5px;padding:5px 6px;width:100%}
+textarea{min-height:110px;font-size:11.5px}
+label.f{display:grid;grid-template-rows:1fr auto;align-items:end;gap:3px;font-size:11.5px;color:var(--muted)}
+.grid3 select,.grid3 input[type=number]{height:32px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;padding:6px 12px}
+.seg button.sel{background:var(--ink);color:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font:500 10.5px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em;background:var(--panel2);position:sticky;top:0;z-index:1}
+td:first-child,th:first-child,td.l,th.l{text-align:left}
+td{font-family:var(--mono)}
+th.grp{text-align:center;border-left:1px solid var(--line)} td.bl,th.bl{border-left:1px solid var(--line)}
+.tw{overflow:auto;max-height:320px}
+.pass{color:var(--ok)} .fail{color:var(--alarm);font-weight:600} .warn{color:var(--soft)} .dim{color:var(--faint)}
+.hi{color:var(--high)} .lo{color:var(--base)}
+#log{max-height:300px;overflow:auto;font:12px/1.4 var(--mono)}
+#log div{padding:5px 12px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:52px 62px 1fr;gap:6px}
+#log .HARD{color:var(--alarm)} #log .SOFT{color:var(--soft)} #log .INFO{color:var(--muted)} #log .MOTION{color:var(--ink)}
+.sens{display:grid;grid-template-columns:62px repeat(6,1fr);gap:4px;font:11px var(--mono);align-items:center}
+.sens .h{color:var(--muted);text-align:center;font-size:10px}
+.sbtn{height:24px;border-radius:4px;border:1px solid var(--line2);background:var(--panel2);padding:0;font:10px var(--mono);color:var(--muted)}
+.sbtn.lit{background:var(--high);color:#fff;border-color:var(--high)}
+.sbtn.dis{opacity:.32;border-style:dashed}
+.sbtn.stuck{border:2px solid var(--alarm);color:var(--alarm);background:transparent}
+.sbtn.stuck.lit{background:var(--alarm);color:#fff}
+.note{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.55}
+details.wide{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin:0 20px 14px}
+details.wide>summary{cursor:pointer;padding:10px 12px;font:600 11px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+details.wide .body{padding:0 12px 12px}
+.params{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.params h4{grid-column:1/-1;margin:6px 0 0;font:600 12px var(--sans);color:var(--ink)}
+.issues li{margin:0 0 8px;font-size:13px}
+.issues b{font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:3px;margin-right:6px}
+.tag-a{background:rgba(204,47,39,.14);color:var(--alarm)} .tag-q{background:rgba(166,124,0,.16);color:var(--soft)} .tag-c{background:rgba(43,133,72,.15);color:var(--ok)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font:12px var(--mono)} .kv span:nth-child(odd){color:var(--muted)}
+.theme{font-size:12px;padding:4px 8px}
+:root{--roomc:#7EA6B4}
+header{border-bottom:3px solid var(--roomc);align-items:center}
+.hdr-l{display:grid;gap:8px}
+.hdr-r{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+@media (max-width:900px){.hdr-r{align-items:flex-start}}
+.roomsel{display:inline-flex;gap:6px;flex-wrap:wrap}
+.roomsel button{font:700 13px var(--mono);letter-spacing:.06em;padding:8px 14px;border-radius:7px;background:transparent;border:2px solid var(--rc);color:var(--ink);opacity:.55;display:inline-flex;align-items:center;gap:8px}
+.roomsel button[data-r="base"]{--rc:#FF7032} .roomsel button[data-r="top"]{--rc:#7EA6B4}
+.roomsel button:hover{opacity:.85}
+.roomsel button.sel{background:var(--rc);color:#10161a;opacity:1;box-shadow:0 0 0 3px color-mix(in srgb, var(--rc) 30%, transparent)}
+.transport{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.play{min-width:132px;font:700 15px var(--sans);display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:9px 16px;border-radius:8px;border:2px solid}
+.play .ic{font-size:14px;line-height:1}
+.play.running{background:transparent;border-color:var(--soft);color:var(--soft)}
+.play.paused{background:var(--ok);border-color:var(--ok);color:#fff;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 45%, transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb, var(--ok) 0%, transparent)}}
+@media (prefers-reduced-motion: reduce){.play.paused{animation:none}}
+.tbtn{font-weight:600}
+.spd{display:inline-flex;align-items:center;gap:6px;font:600 12px var(--sans);color:var(--muted);border:1px solid var(--line2);border-radius:6px;padding:0 4px 0 10px;background:var(--panel2)}
+.spd select{width:auto;border:0;background:transparent;font-weight:600}
+.v.muted{color:var(--muted)}
+.jbar{height:3px;background:var(--line);border-radius:2px;margin-top:4px;overflow:hidden;visibility:hidden}
+.jbar i{display:block;height:100%;width:0;background:var(--soft)}
+#jobChip.active{border-color:var(--soft);box-shadow:0 0 0 2px color-mix(in srgb, var(--soft) 25%, transparent)}
+#jobChip.active .jbar{visibility:visible}
+th .u{display:block;font:500 9.5px var(--mono);letter-spacing:.02em;text-transform:none;color:var(--faint);margin-top:2px}
+.units{font:11px var(--mono);color:var(--muted);padding:6px 12px;border-top:1px solid var(--line);line-height:1.6}
+.units b{color:var(--ink);font-weight:600}
+#plc th,#plc td{padding:5px 5px} #plc{font-size:11.5px}
+#lay td{padding:3px 4px} #lay input,#lay select{padding:3px 4px;font-size:12px}
+#lay input{width:70px} #lay select{width:150px} #lay td .sm{padding:3px 6px}
+#lay .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ptgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-top:10px}
+</style>
+</head>
+<body>
+<header id="hdr">
+  <div class="hdr-l">
+    <h1>Flow Coater · Paint Curtain Simulator</h1>
+    <div class="sub">AFT MIRROR line — glass motion: when the room speeds up and when it returns to base speed</div>
+    <div class="roomsel" id="roomSeg" role="tablist" aria-label="Paint room">
+      <button data-r="base" role="tab">BASE PAINT ROOM</button><button data-r="top" role="tab" class="sel">TOP PAINT ROOM</button>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <div class="transport">
+      <button id="runBtn" class="play running" title="Run / pause the simulation (Space)"><span class="ic">❚❚</span><span class="tx">Pause</span></button>
+      <button id="stepBtn" class="tbtn" title="Pause and advance 0.5 s">⏭ Step 0.5 s</button>
+      <button id="resetBtn" class="tbtn" title="Clear the line and start again">↺ Restart</button>
+      <label class="spd" title="Simulation speed">Speed<select id="simSpeed">
+        <option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1">1×</option>
+        <option value="2" selected>2×</option><option value="4">4×</option><option value="8">8×</option>
+      </select></label>
+    </div>
+    <div class="chips">
+      <div class="chip"><div class="k">Simulation</div><div class="v" id="cSim">—</div></div>
+      <div class="chip"><div class="k">Line</div><div class="v" id="cLine">—</div></div>
+      <div class="chip"><div class="k">Room speed</div><div class="v" id="cSpeed">—</div></div>
+      <div class="chip"><div class="k">Command</div><div class="v" id="cCmd">—</div></div>
+      <div class="chip"><div class="k">Sim time</div><div class="v" id="cTime">0.0 s</div></div>
+      <div class="chip" id="jobChip"><div class="k">Job change</div><div class="v" id="cJob">—</div><div class="jbar"><i id="jobBar"></i></div></div>
+      <button class="theme" id="themeBtn" title="Toggle light/dark">Theme</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="card">
+      <h2>Plan view — glass flow → <span class="r" id="roomLbl"></span></h2>
+      <canvas id="cv"></canvas>
+      <div id="hover" class="dim">Hover the drawing to read the position (mm from Entry sensor).</div>
+      <div class="legend">
+        <span><i style="background:var(--chain)"></i>Chain conveyor (base only)</span>
+        <span><i style="background:var(--head)"></i>Chain head</span>
+        <span><i style="background:var(--free)"></i>Free roller</span>
+        <span><i style="background:var(--freeNew)"></i>New free roller</span>
+        <span><i style="background:var(--inv)"></i>INV roller (2-speed)</span>
+        <span><i style="background:var(--belt)"></i>Belt (2-speed)</span>
+        <span><i id="lgPaint"></i><span id="lgPaintName">Top paint</span> — coated at high speed</span>
+        <span><i id="lgThick"></i>Coated at base speed — dark + hatched (≈ <span id="thickX">11.8</span>× film)</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2><span>Layout editor — <span id="layRoom">Top</span> room</span> <span class="r">all values in mm · Entry sensor = 0 · applies live · saved in this browser</span></h2>
+      <div class="pad">
+        <div class="tw" style="max-height:none"><table id="lay"><thead><tr>
+          <th>#</th><th class="l">Type</th><th>Qty<span class="u">pcs</span></th><th title="Roller diameter">Ø<span class="u">mm</span></th><th title="① Centre-to-centre distance between rollers of this colour">① Within colour<span class="u">mm, c-c</span></th><th>Belt length<span class="u">mm</span></th><th title="② From the centre of this row's last roller to the centre of the next row's first roller (a belt counts from its edge)">② To next colour →<span class="u">mm, c-c</span></th><th>Start<span class="u">mm from Entry</span></th><th>End<span class="u">mm from Entry</span></th><th class="l">Edit</th>
+        </tr></thead><tbody></tbody></table></div>
+        <div class="row" style="margin-top:8px"><button class="sm" id="layAddUp">+ Add row at upstream end</button><button class="sm" id="layAddDown">+ Add row at downstream end</button></div>
+        <h4 style="margin:14px 0 6px;font:600 12px var(--sans)">Sensors &amp; room walls — tied to a roller row (position = that row's edge + offset; + = downstream / right)</h4>
+        <div class="tw" style="max-height:none"><table id="laySens"><thead><tr><th class="l">Sensor</th><th class="l">Measured from row</th><th class="l">Edge</th><th>Offset<span class="u">mm, + = right</span></th><th>Position<span class="u">mm from Entry</span></th></tr></thead><tbody></tbody></table></div>
+        <div class="ptgrid" id="layPts"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="sm primary" id="laySaveDef">💾 Save as default</button>
+          <button class="sm" id="layLoadDef">↺ Reset room to my default</button>
+          <button class="sm" id="layReset">Reset room to drawing values</button>
+          <button class="sm" id="layDownload">⬇ Download HTML with my default built in</button>
+          <span class="note" id="defNote" style="margin:0"></span>
+          <button class="sm" id="layExport">Export JSON</button>
+          <button class="sm" id="layImport">Import JSON</button>
+        </div>
+        <textarea id="layJson" style="display:none;margin-top:8px" spellcheck="false"></textarea>
+        <p class="note">One row = one colour group, in flow order (left → right). <b>Ø</b> = roller size. <b>① Within colour</b> = centre-to-centre between rollers of this colour. <b>② To next colour</b> = centre of this row's last roller → centre of the next row's first roller (a belt counts from its edge). The last row only has ①. Red ② = overlaps the next row. <b>＋</b> inserts a copy after the row; any change pushes the rows to the right. Sensors move with the roller they are tied to; Entry is always 0. Room walls are drawing only (they don't change the motion). Curtain override is mm from Entry.<br>
+        Drive rule: glass touching an INV roller or belt moves at room speed; otherwise touching a chain / chain head → base speed; on free rollers only it keeps the speed it had.</p>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Room conveyor speed · last 40 s <span class="r"><span class="hi">━ actual</span> &nbsp; <span class="dim">┅ command</span></span></h2>
+      <canvas id="tr" style="height:130px"></canvas>
+    </div>
+    <div class="card">
+      <h2>Speed-up / back to base per load <span class="r">glass FRONT position, mm from Entry · pred = formula · sim = simulated &nbsp;<button class="sm" id="csvBtn" title="Download all loads as CSV">⬇ CSV</button></span></h2>
+      <div class="tw"><table id="res"><thead>
+        <tr><th></th><th></th><th></th><th></th><th></th><th class="grp" colspan="3">Speed-up at<span class="u">glass front, mm</span></th><th class="grp" colspan="3">Back to base at<span class="u">glass front, mm</span></th><th class="grp" colspan="2">Curtain @ high<span class="u">% of glass</span></th><th class="grp" colspan="2">High speed<span class="u">seconds</span></th><th class="grp" colspan="2"><span id="inRoomHdr">In room</span><span class="u">seconds</span></th></tr>
+        <tr><th>Load</th><th class="l">Size<span class="u">W×L in · across×flow</span></th><th>PLC L<span class="u">in</span></th><th>Gₛ<span class="u">slow p</span></th><th>K<span class="u">p</span></th>
+          <th class="bl">pred<span class="u">from Entry</span></th><th>sim<span class="u">from Entry</span></th><th>vs Inlet<span class="u">mm</span></th>
+          <th class="bl">pred<span class="u">from Entry</span></th><th>sim<span class="u">from Entry</span></th><th>vs Exit<span class="u">mm</span></th>
+          <th class="bl">pred</th><th>sim</th><th class="bl">pred</th><th>sim</th><th class="bl">pred</th><th>sim</th></tr>
+      </thead><tbody></tbody></table></div>
+      <div class="units"><b>Units</b> · in = inch · mm = millimetre · s = seconds · <b>slow p</b> = slow-encoder pulse (1 p = 0.3125 in = 7.94 mm) · <b>high p</b> = high-encoder pulse (1 p = 0.265 in = 6.73 mm) · positions = glass front, mm from Entry sensor · vs Inlet / vs Exit: + = after the sensor, − = before · pred = formula, sim = simulated</div>
+    </div>
+  </section>
+
+  <aside>
+
+    <div class="card"><h2>HMI size <span class="r" id="hmiNow"></span></h2><div class="pad">
+      <label class="f">Size (production list)<select id="preset"></select></label>
+      <div class="grid3" style="margin-top:8px">
+        <label class="f">Sheet W (in)<input type="number" id="rW" min="6" max="96" step="1"></label>
+        <label class="f">Sheet L (in)<input type="number" id="rLen" step="0.5" min="6" max="200"></label>
+        <label class="f">Loads (0=∞)<input type="number" id="rN" min="0" step="1"></label>
+        <label class="f">Across<input type="number" id="rAcross" min="1" max="4" step="1"></label>
+        <label class="f">In flow<input type="number" id="rNLen" min="1" max="4" step="1"></label>
+        <label class="f">Alignment<select id="rAlign"><option value="left">Left ref</option><option value="center">Centered</option><option value="split">Split L/R</option></select></label>
+        <label class="f">Batch gap (in)<input type="number" id="rGapX" step=".5" min="0"></label>
+        <label class="f">Load gap (in)<input type="number" id="rGapY" step=".5" min="0"></label>
+        <label class="f" title="Delay when the size changes: no new glass is fed for this long after Confirm">Job change (min)<input type="number" id="rJob" step="0.5" min="0" value="1"></label>
+      </div>
+      <div class="note" id="rNote"></div>
+      <div class="row" style="margin-top:10px"><button class="primary" id="confirmBtn">Confirm (send to PLC)</button></div>
+    </div></div>
+
+    <div class="card"><h2>Siemens PLC — load queue</h2>
+      <div class="tw" style="max-height:220px"><table id="plc"><thead><tr><th>#</th><th class="l">Sheets<span class="u">pcs</span></th><th>L<span class="u">in</span></th><th>Gₛ<span class="u">slow p</span></th><th>K<span class="u">p</span></th><th>X<span class="u">high p</span></th><th class="l">State</th><th>Remain<span class="u">sp / hp</span></th></tr></thead><tbody></tbody></table></div>
+      <div class="pad kv" id="encKv" style="padding-top:8px"></div>
+      <div class="units">sp = slow pulses left until speed-up · hp = high pulses left until back to base · WAIT → HIGH → DONE</div>
+    </div>
+
+    <div class="card"><h2>Event log <span class="r"><label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="motOnly" checked>motion only</label> <button class="sm" id="clrLog">Clear</button></span></h2><div id="log"></div></div>
+
+    <details class="card" id="safety"><summary>Safety layer (Mitsubishi) &amp; faults <span class="r">optional ▾</span></summary><div class="pad">
+      <label style="font-size:12.5px;display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="mitsuOn" style="margin-top:3px"><span>Run Mitsubishi checks (length compare, speed-up timer, lane / A-B sensor checks). Off = motion only.</span></label>
+      <label style="margin-top:8px;font-size:12.5px;display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="ilk" style="margin-top:3px"><span>Alarms trip interlock. (Charge Too Long always stops the line.)</span></label>
+      <div class="row" style="margin-top:10px">
+        <button class="danger" id="estopBtn">E-STOP</button>
+        <button id="ackBtn">Reset / restart line</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button data-f="break">Break glass in room</button>
+        <button data-f="overlap">Overlap next load</button>
+        <button data-f="missing">Missing sheet next load</button>
+        <button data-f="hEncDead" class="tog">High encoder dead</button>
+        <button data-f="vfdNoResp" class="tog">VFD no run-up</button>
+        <button data-f="vfdStuckHigh" class="tog">VFD stuck high</button>
+      </div>
+      <div style="margin-top:12px;font:600 10.5px var(--mono);color:var(--muted);letter-spacing:.06em">SENSORS — click to fail (stuck OFF) · dashed = not used for this size</div>
+      <div class="sens" id="sensGrid" style="margin-top:6px"></div>
+    </div></details>
+  </aside>
+</main>
+
+<details class="wide" id="paramDet">
+  <summary>Parameters</summary>
+  <div class="body"><div class="params" id="params"></div></div>
+</details>
+
+<details class="wide">
+  <summary>Logic used &amp; open points</summary>
+  <div class="body"><ul class="issues">
+    <li><b class="tag-c">CONFIRMED</b>Gₛ = glass length counted by the slow encoder (1 p = 0.3125 in) from Entry ON to OFF. The workbook tables that use L/0.265 are wrong (selectable in Parameters for comparison).</li>
+    <li><b class="tag-c">CONFIRMED</b>The program doesn't know Single/Batch. If a sheet is &lt; 170 p it waits 30 p for another; sheets are merged into one long "sheet" L (max 3 — at the 3rd it closes immediately). K comes from the Excel table by Gₛ, so merged loads (≥ 320 p) get K = 155.</li>
+    <li><b class="tag-c">CONFIRMED</b>Speed-up when the front has passed A + ⅔L from Entry (A = 146 p). X = (1110 − Gₛ) + ⅔Gₛ − K = high-speed distance in high pulses (0.265 in) from speed-up until back to base.</li>
+    <li><b class="tag-c">CONFIRMED</b>Yellow = chain conveyor (base only), pink = chain head, grey = free roller, blue = new free roller, purple = INV roller (2-speed, always together with the belts).</li>
+    <li><b class="tag-c">CONFIRMED</b>Designed for one load at high speed at a time; an overlap is logged (possible bug). Largest load 470 p — longer stops the line immediately (Charge Too Long).</li>
+    <li><b class="tag-c">CONFIRMED</b>Gap inside a batch 2 in, between loads 10 in (= 32 p, only 2 p above the 30 p merge window). Speed change = instant.</li>
+    <li><b class="tag-q">ASSUMED</b>Merged length L = first sheet ON → last sheet OFF (includes the 2 in gaps). "Sum of sheets" selectable in Parameters.</li>
+    <li><b class="tag-q">ASSUMED</b>Glass touching both a 2-speed element and a chain follows the 2-speed element (Parameters → Glass physics). This decides whether the last sheet of the previous load, still half on belt 2, is yanked into the sheet ahead when the next load speeds up.</li>
+    <li><b class="tag-a">FINDING</b>3-in-flow batches (24×36, 42×32, 48×36): at speed-up the 3rd sheet sits entirely on the free rollers before the INV rollers (front ≈ A − 1 in), so nothing drives it; it stays at base speed, falls behind and reaches the curtain after the room is back to base → ~⅓ of the load coated at base speed. Depends on where the INV rollers really start.</li>
+    <li><b class="tag-q">ASSUMED</b>Layout dimensions are first estimates from position_sensor.pdf — correct them in the Layout editor. Base-room Exit sensor is a placeholder.</li>
+    <li><b class="tag-a">EDGE</b>L &gt; 136.9 in: A + ⅔L is reached before the tail clears Entry; the PLC can only start the speed-up once L is known (Entry OFF), i.e. later than the formula (marked * in the table).</li>
+  </ul></div>
+</details>
+
+<script>
+"use strict";
+const MM2IN = 1/25.4, IN2MM = 25.4;
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+
+/* ---------------- data ---------------- */
+const K_TABLE = {   // Excel table, thresholds evaluated on Gs
+  base: [[320,155],[280,125],[240,115],[205,90],[172,70],[0,115]],
+  top:  [[320,155],[280,105],[240,90],[205,80],[172,55],[0,115]]
+};
+/* production list: [width, length, across, in flow, sensors ON (1=L 2=C 3=R)] */
+const PROD_B = [[24,36,4,3,'123'],[30,50,3,2,'123'],[30,60,3,1,'123'],[30,54.5,3,1,'123'],[36,60,2,1,'12'],[36,72,2,1,'12'],
+  [42,32,2,3,'13'],[42,72,2,1,'13'],[43,49,2,2,'13'],[43,65,2,1,'13'],[48,36,2,3,'13'],[48,60,2,1,'13'],[48,72,2,1,'13']];
+const PROD_S = [[60,120,'12'],[72,120,'12'],[84,126,'123'],[84,60,'123'],[84,72,'123'],[84,84,'123'],[84,120,'123'],[84,144,'123'],
+  [96,60,'123'],[96,72,'123'],[96,84,'123'],[96,120,'123'],[96,144,'123']];
+const PRESETS = [
+  ...PROD_B.map(([w,len,nA,nL,on]) => ({grp:'Batch sizes', name:`B ${w}×${len} · ${nA}×${nL}`, w, len, nAcross:nA, nLen:nL, on,
+      align:'left'})),
+  ...PROD_S.map(([w,len,on]) => ({grp:'Single sizes', name:`S ${w}×${len}`, w, len, nAcross:1, nLen:1, on, align:'left'}))
+];
+const TYPES = {
+  chain:   {label:'Chain conveyor', drive:'base', col:'chain'},
+  head:    {label:'Chain head',     drive:'base', col:'head'},
+  free:    {label:'Free roller',    drive:'free', col:'free'},
+  freeNew: {label:'New free roller',drive:'free', col:'freeNew'},
+  inv:     {label:'INV roller (2-speed)', drive:'room', col:'inv'},
+  belt:    {label:'Belt (2-speed)', drive:'room', col:'belt'}
+};
+/* default layouts — mm, Entry sensor = 0, start = left (upstream) edge of first element. First estimates from position_sensor.pdf */
+const DEFAULT_LAYOUT = {
+  top: { rows:[
+    {type:'chain', start:-1126, qty:4, dia:63,  pitch:254},
+    {type:'head',  start:-110,  qty:1, dia:63,  pitch:0},
+    {type:'free',  start:202,   qty:4, dia:80,  pitch:292},
+    {type:'inv',   start:1398,  qty:6, dia:100, pitch:330},
+    {type:'belt',  start:3288,  len:1600},
+    {type:'belt',  start:4963,  len:3640},
+    {type:'free',  start:8703,  qty:5, dia:80,  pitch:140},
+    {type:'freeNew',start:9423, qty:1, dia:80,  pitch:0},
+    {type:'head',  start:9590,  qty:1, dia:63,  pitch:0},
+    {type:'chain', start:9844,  qty:4, dia:63,  pitch:254}
+  ], inlet:3193, exit:9543, curtain:null, wallIn:2281, wallOut:10073 },
+  base: { rows:[
+    {type:'chain', start:-1033, qty:2, dia:78, pitch:305},
+    {type:'free',  start:-423,  qty:2, dia:78, pitch:305},
+    {type:'free',  start:350,   qty:4, dia:78, pitch:241},
+    {type:'belt',  start:1300,  len:3645},
+    {type:'belt',  start:5110,  len:3620},
+    {type:'free',  start:8862,  qty:5, dia:78, pitch:130},
+    {type:'head',  start:9622,  qty:1, dia:78, pitch:0},
+    {type:'chain', start:9927,  qty:4, dia:78, pitch:305}
+  ], inlet:530, exit:9540, curtain:null, wallIn:350, wallOut:10200 }
+};
+/* Editor model (all mm):
+   rows in flow order; each row has "gap" = edge-to-edge distance from the previous row, so inserting / resizing pushes neighbours.
+   Sensors are tied to a roller row: position = that row's upstream or downstream edge + offset.
+   Coordinates are then shifted so the Entry sensor = 0. */
+const rowWidth = r => r.type==='belt' ? (+r.len||0) : (Math.max(1, Math.round(+r.qty||1))-1)*(+r.pitch||0) + (+r.dia||0);
+let RID = 0; const newId = () => 'r' + (Date.now()%1e6).toString(36) + (RID++);
+/* reference point of a row towards its neighbour: roller row → centre of its first / last roller; belt → its edge */
+const firstOff = r => r.type==='belt' ? 0 : (+r.dia||0)/2;
+const lastOff  = r => r.type==='belt' ? 0 : (+r.dia||0)/2;
+function chainRaw(L){ const pos = [];
+  L.rows.forEach((r,i) => {
+    let x = 0;
+    if (i){ const p = L.rows[i-1];
+      x = p.next !== undefined ? (pos[i-1][1] - lastOff(p)) + (+p.next||0) - firstOff(r)   // c-c to next row
+                               : pos[i-1][1] + (+r.gap||0); }                               // legacy edge gap
+    pos.push([x, x + rowWidth(r)]); });
+  return pos; }
+function gapsToNext(rows){
+  rows.forEach((r,i) => { if (i < rows.length-1 && r.next === undefined) r.next = Math.round(((+rows[i+1].gap||0) + lastOff(r) + firstOff(rows[i+1]))*10)/10; });
+  rows.forEach(r => delete r.gap); if (rows.length) delete rows[rows.length-1].next; }
+function edgeOf(L, pos, sp){ const i = L.rows.findIndex(r=>r.id===sp.ref); return i<0 ? null : (sp.edge==='up' ? pos[i][0] : pos[i][1]); }
+function positions(L){
+  const raw = chainRaw(L), e = L.sensors && L.sensors.entry ? edgeOf(L, raw, L.sensors.entry) : null;
+  const z = e==null ? 0 : e + (+L.sensors.entry.off||0);
+  return raw.map(([a,b]) => [a - z, b - z]);
+}
+function sensorAt(L, key, pos){ const sp = L.sensors && L.sensors[key]; if (!sp) return null; const e = edgeOf(L, pos, sp); return e==null ? null : e + (+sp.off||0); }
+function refFor(L, pos, x){   // tie an absolute position to the best roller row
+  const i = pos.findIndex(([a,b]) => x >= a && x <= b);
+  if (i >= 0) return {ref:L.rows[i].id, edge:'up', off:Math.round(x - pos[i][0])};
+  let best = -1; pos.forEach(([a,b],k) => { if (b <= x && (best < 0 || b > pos[best][1])) best = k; });
+  if (best < 0) best = 0;
+  return {ref:L.rows[best].id, edge: best===0 && pos[0][0] > x ? 'up' : 'down', off:Math.round(x - (best===0 && pos[0][0] > x ? pos[0][0] : pos[best][1]))};
+}
+function toV3(L){   // accept v1 (absolute starts) / v2 (anchor chain) / v3
+  if (L.sensors) { for (const r of L.rows) if (!r.id) r.id = newId(); if (L.rows.some(r=>r.gap!==undefined)) gapsToNext(L.rows);
+    if (!L.sensors.wallIn){ const pos = positions(L); L.sensors.wallIn = refFor(L, pos, +L.wallIn||0); L.sensors.wallOut = refFor(L, pos, +L.wallOut||0); delete L.wallIn; delete L.wallOut; }
+    return L; }
+  let abs, rows;
+  if (L.rows.length && L.rows[0].start !== undefined && L.anchor === undefined){
+    rows = L.rows.map(r=>({...r})).sort((a,b)=>a.start-b.start);
+    abs = rows.map(r => [+r.start, +r.start + rowWidth(r)]);
+    rows = rows.map((r,i) => { const o = {type:r.type}; if (r.type==='belt') o.len = +r.len; else { o.qty = +r.qty; o.dia = +r.dia; o.pitch = +r.pitch; }
+      o.gap = i ? Math.round(abs[i][0] - abs[i-1][1]) : 0; return o; });
+  } else {   // v2: anchor + anchorStart
+    rows = L.rows.map(r=>({...r})); const raw = chainRaw({rows}); const a = clamp(L.anchor|0, 0, rows.length-1);
+    const sh = (+L.anchorStart||0) - raw[a][0]; abs = raw.map(([x,y]) => [x+sh, y+sh]);
+  }
+  rows.forEach(r => { r.id = newId(); delete r.start; });
+  const out = { rows, curtain: L.curtain ?? null, wallIn: L.wallIn, wallOut: L.wallOut, sensors:{} };
+  out.sensors.entry = refFor(out, abs, 0);
+  out.sensors.inlet = refFor(out, abs, +L.inlet);
+  out.sensors.exit  = refFor(out, abs, +L.exit);
+  out.sensors.wallIn  = refFor(out, abs, +L.wallIn);
+  out.sensors.wallOut = refFor(out, abs, +L.wallOut);
+  delete out.wallIn; delete out.wallOut;
+  gapsToNext(out.rows);
+  return out;
+}
+const normLayout = o => ({ top: toV3(JSON.parse(JSON.stringify(o.top))), base: toV3(JSON.parse(JSON.stringify(o.base))) });
+let BAKED_DEFAULT = null; /*@@BAKED_DEFAULT@@*/
+const FACTORY_CHAIN = normLayout(DEFAULT_LAYOUT);
+const USER_DEF_KEY = 'fcsim.layout.userdefault';
+function readUserDefault(){
+  try { const o = JSON.parse(localStorage.getItem(USER_DEF_KEY) || 'null'); if (o && o.top && o.base) return normLayout(o); } catch(e) {}
+  try { if (BAKED_DEFAULT && BAKED_DEFAULT.top) return normLayout(BAKED_DEFAULT); } catch(e) {}
+  return null;
+}
+let DEFAULT_CHAIN = readUserDefault() || FACTORY_CHAIN;
+const LS_KEY = 'fcsim.layout.v4';
+let LAYOUT = null;
+try {   // load the saved layout and upgrade it to the current format; any problem → drawing defaults
+  const saved = JSON.parse(localStorage.getItem(LS_KEY) || localStorage.getItem('fcsim.layout.v3') || 'null');
+  if (saved && saved.top && saved.base){
+    LAYOUT = normLayout(saved);
+    for (const k of ['top','base']){ const L = LAYOUT[k];
+      if (!L.rows.length || !['entry','inlet','exit','wallIn','wallOut'].every(s => L.sensors[s] && L.rows.some(r => r.id===L.sensors[s].ref))) throw new Error('bad layout'); }
+  }
+} catch(e) { LAYOUT = null; }
+if (!LAYOUT || !LAYOUT.top || !LAYOUT.base) LAYOUT = JSON.parse(JSON.stringify(DEFAULT_CHAIN));
+const saveLayout = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(LAYOUT)); } catch(e) {} };
+
+/* ---------------- parameters ---------------- */
+const P = {
+  vBaseMM:105, vHighMM:1240, slowRes:0.3125, highRes:0.265, accelPulses:146,
+  batchLimit:170, gapLimit:30, maxSheets:3, chargeLong:470, rampS:0,
+  gsBasis:'slow', lenMode:'span', siemensEntry:'left', mixDrive:'room',
+  tTopStart:'inletOff', tTopStop:'exitOn', tBaseStart:'inletOff', tBaseStop:'exitOn',
+  mitsu:false, interlock:false,
+  tolPulses:3, timerLimit:10.0, timerDebounce:0.3, laneTol:2,
+  rollerWidthMM:2650, pairGapMM:100, sensL:20, sensC:52, sensR:82, glassLeftMM:100, gapCross:2, maxGlassW:96, covMargin:1
+};
+const PARAM_UI = [
+  ['h','Speeds & encoders'],
+  ['vBaseMM','Base speed (mm/s)'],['vHighMM','High speed (mm/s)'],['slowRes','Slow pulse (in)'],['highRes','High pulse (in)'],['rampS','Base↔High ramp (s)'],
+  ['h','Siemens speed-up logic'],
+  ['accelPulses','Speed-up reference A (slow p)'],['batchLimit','Merge if sheet < (slow p)'],['gapLimit','Wait for next sheet (slow p)'],['maxSheets','Max sheets merged'],['chargeLong','Charge Too Long (slow p)'],
+  ['gsBasis','Gₛ unit',[['slow','Slow pulses (confirmed)'],['high','L/0.265 (workbook tables)']]],
+  ['lenMode','Merged length L',[['span','First ON → last OFF (incl. gaps)'],['sum','Sum of sheets only']]],
+  ['siemensEntry','Siemens entry sensor',[['left','Entry-LEFT pair'],['any','Any section']]],
+  ['h','In-room timer (per room) — batch = one big sheet'],
+  ['tTopStart','Top: start',[['inletOff','Inlet falling edge (tail leaves Inlet)'],['inletOn','Inlet rising edge (front reaches Inlet)']]],
+  ['tTopStop','Top: stop',[['exitOn','Exit rising edge (front reaches Exit)'],['exitOff','Exit falling edge (tail leaves Exit)']]],
+  ['tBaseStart','Base: start',[['inletOff','Inlet falling edge (tail leaves Inlet)'],['inletOn','Inlet rising edge (front reaches Inlet)']]],
+  ['tBaseStop','Base: stop',[['exitOn','Exit rising edge (front reaches Exit)'],['exitOff','Exit falling edge (tail leaves Exit)']]],
+  ['h','Glass physics'],
+  ['mixDrive','Glass on 2-speed AND chain at once follows',[['room','2-speed element (belt / INV)'],['base','Chain conveyor'],['more','Whichever it touches over a longer length']]],
+  ['h','Mitsubishi layer (only when enabled)'],
+  ['tolPulses','Length tolerance ± (slow p)'],['timerLimit','Speed-up limit Inlet→Exit (s)'],['timerDebounce','Timer edge OFF-delay (s)'],['laneTol','Lane mismatch allowance (in)'],
+  ['h','Across the line'],
+  ['rollerWidthMM','Roller width (mm)'],['glassLeftMM','Glass left edge from roller left edge (mm, ≈)'],
+  ['sensL','Sensor L (right one of pair) from glass left edge (in)'],['sensC','Sensor C (right one of pair) from glass left edge (in)'],['sensR','Sensor R (right one of pair) from glass left edge (in)'],
+  ['pairGapMM','Gap between the 2 sensors of a pair (mm)'],['gapCross','Gap between sheets across (in, ≤ fits 96 in)'],['maxGlassW','Max glass width (in)'],['covMargin','Sensor needs glass this far past beam (in) *']
+];
+
+/* ---------------- recipe ---------------- */
+const R = {}; let HMI = {};
+/* lateral coordinate y (inch): 0 = roller centre line, negative = LEFT side (facing flow) */
+const SEC = ['LEFT','CENTER','RIGHT'], SECY = {}, POS = ['ENTRY','INLET','EXIT'];
+const RWin = () => P.rollerWidthMM*MM2IN, HW = () => RWin()/2;
+const glassRef = () => P.glassLeftMM*MM2IN - HW();     // y of the glass left loading reference
+const sensY = (sc, ab) => ab==='B' ? SECY[sc] : SECY[sc] - P.pairGapMM*MM2IN;   // B = right sensor at the stated distance
+function updateSECY(){ const g0 = glassRef(); SECY.LEFT = g0 + P.sensL; SECY.CENTER = g0 + P.sensC; SECY.RIGHT = g0 + P.sensR; }
+updateSECY();
+const secOn = sc => (HMI.on || '123').includes(String(SEC.indexOf(sc)+1));
+const hmiFrom = r => ({ name:r.name, len:r.len, on: r.on || coverage(r) });
+function presetToR(i, T=R){
+  const pr = PRESETS[i];
+  Object.assign(T,{name:pr.name, w:pr.w, len:pr.len, nAcross:pr.nAcross, nLen:pr.nLen, align:pr.align, on:pr.on, gapX:2, gapY:10, n:0});
+}
+function lateral(r){
+  const n = r.nAcross, w = r.w, L0 = glassRef();          // left loading reference
+  // cross gap: nominal, but never wider than what fits in the max glass width (24×4 and 48×2 end up with 0)
+  let gap = n>1 ? Math.max(0, Math.min(P.gapCross, (P.maxGlassW - n*w)/(n-1))) : 0, start = L0;
+  if (r.align==='split' && n>1) gap = Math.max(0, (P.maxGlassW - n*w)/(n-1));   // spread over the max glass width
+  else if (r.align==='center') start = -(n*w + (n-1)*gap)/2;
+  return Array.from({length:n}, (_,c) => [start + c*(w+gap), start + c*(w+gap) + w]);
+}
+function coverage(r){
+  const lanes = lateral(r), m = P.covMargin;
+  const hit = y => lanes.some(([a,b]) => a + m <= y && b - m >= y);
+  return SEC.map((sc,i) => hit(sensY(sc,'A')) && hit(sensY(sc,'B')) ? String(i+1) : '').join('');   // both sensors of the pair
+}
+const sizeSig = r => [r.w, r.len, r.nAcross, r.nLen, r.align, r.gapX, r.gapY].map(String).join('|');
+const formSize = () => ({ w:+$('#rW').value, len:+$('#rLen').value, nAcross:Math.max(1,Math.round(+$('#rAcross').value)), nLen:Math.max(1,Math.round(+$('#rNLen').value)),
+  align:$('#rAlign').value, gapX:+$('#rGapX').value, gapY:+$('#rGapY').value });
+function rFromForm(){
+  R.w=+$('#rW').value; R.len=+$('#rLen').value; R.n=Math.max(0,Math.round(+$('#rN').value));
+  R.nAcross=Math.max(1,Math.round(+$('#rAcross').value)); R.nLen=Math.max(1,Math.round(+$('#rNLen').value)); R.align=$('#rAlign').value;
+  R.gapX=+$('#rGapX').value; R.gapY=+$('#rGapY').value;
+  const p = $('#preset').value;
+  R.name = p==='custom' ? `Custom ${R.w}×${R.len} · ${R.nAcross}×${R.nLen}` : PRESETS[+p].name;
+  R.on = p==='custom' ? '' : PRESETS[+p].on;
+}
+function rToForm(T=R){
+  $('#rW').value=T.w; $('#rLen').value=T.len; $('#rN').value=T.n; $('#rAcross').value=T.nAcross; $('#rNLen').value=T.nLen;
+  $('#rAlign').value=T.align; $('#rGapX').value=T.gapX; $('#rGapY').value=T.gapY;
+}
+const lNet = r => r.nLen*r.len + (r.nLen-1)*r.gapX;
+
+/* ---------------- geometry from layout ---------------- */
+let room = 'top', G;
+function geom(){
+  const L = LAYOUT[room], A = P.accelPulses*P.slowRes, pos = positions(L);
+  const rows = L.rows.map((r,i) => ({...r, start:pos[i][0], span: pos[i]}));
+  const zones = rows.map(r => ({a:r.span[0]*MM2IN, b:r.span[1]*MM2IN, drive:TYPES[r.type].drive, type:r.type}));
+  const belts = rows.filter(r=>r.type==='belt').sort((a,b)=>a.span[0]-b.span[0]);
+  let curtain = L.curtain;
+  if (curtain==null || curtain==='' || isNaN(curtain)){
+    curtain = belts.length>=2 ? (belts[0].span[1] + belts[1].span[0])/2 : belts.length ? (belts[0].span[0]+belts[0].span[1])/2 : 0;
+  }
+  const rollers = [];
+  for (const r of rows){
+    if (r.type==='belt') continue;
+    const q = Math.max(1, Math.round(+r.qty||1));
+    for (let i=0;i<q;i++){ const a = (+r.start + i*(+r.pitch||0))*MM2IN; rollers.push({a, b:a + (+r.dia||0)*MM2IN, type:r.type}); }
+  }
+  const inlet = sensorAt(L,'inlet',pos) ?? 0, exit = sensorAt(L,'exit',pos) ?? 0;
+  return { A, inlet:inlet*MM2IN, exit:exit*MM2IN, curtain:curtain*MM2IN,
+    wallIn:(sensorAt(L,'wallIn',pos) ?? 0)*MM2IN, wallOut:(sensorAt(L,'wallOut',pos) ?? 0)*MM2IN, zones, rollers,
+    belts: belts.map(b=>({a:b.span[0]*MM2IN, b:b.span[1]*MM2IN})),
+    viewX0: (Math.min(-300, ...rows.map(r=>r.span[0])) - 150)*MM2IN,
+    vB: P.vBaseMM*MM2IN, vH: P.vHighMM*MM2IN };
+}
+function driveAt(tail, front){
+  let rl=0, bl=0;
+  for (const z of G.zones){ const ov = Math.min(z.b, front) - Math.max(z.a, tail); if (ov > 0){ if (z.drive==='room') rl += ov; else if (z.drive==='base') bl += ov; } }
+  if (!rl && !bl) return 'free'; if (!rl) return 'base'; if (!bl) return 'room';
+  return P.mixDrive==='room' ? 'room' : P.mixDrive==='base' ? 'base' : (rl >= bl ? 'room' : 'base');
+}
+const timerCfg = () => room==='top' ? {start:P.tTopStart, stop:P.tTopStop} : {start:P.tBaseStart, stop:P.tBaseStop};
+const TLBL = {inletOff:'Inlet ↓', inletOn:'Inlet ↑', exitOn:'Exit ↑', exitOff:'Exit ↓'};
+function kFor(gs){ for (const [th,k] of K_TABLE[room]) if (gs>=th) return k; return 115; }
+
+/* formula prediction for one size — glass FRONT positions, inches from Entry */
+function predict(r){
+  const sheetP = r.len/P.slowRes, span = lNet(r);
+  const Ln = P.lenMode==='sum' ? r.nLen*r.len : span, Lp = Ln/P.slowRes;
+  const Gs = P.gsBasis==='slow' ? Lp : Ln/P.highRes;
+  const K = kFor(Gs), Xp = (1110-Gs) + (2/3)*Gs - K, Xin = Xp*P.highRes;
+  /* the PLC knows L only when the load is closed: at the last OFF (sheet ≥ 170 p or max sheets) or 30 p after it */
+  const closesAtOff = sheetP >= P.batchLimit || r.nLen >= P.maxSheets;
+  const known = span + (closesAtOff ? 0 : (P.gapLimit+1)*P.slowRes);
+  const ideal = G.A + (2/3)*Ln, accel = Math.max(ideal, known), decel = accel + Xin;
+  const W = G.exit - G.inlet, b1 = clamp(accel - G.inlet, 0, W), he = clamp(decel - G.inlet, 0, W);
+  const th = (b1 + (W-he))/G.vB + (he-b1)/G.vH;
+  const cfg = timerCfg();
+  const xs = cfg.start==='inletOff' ? G.inlet + span : G.inlet, xe = cfg.stop==='exitOn' ? G.exit : G.exit + span;
+  const travel = (x0,x1) => { if (x1 <= x0) return null; const h = Math.max(0, Math.min(x1,decel) - Math.max(x0,accel)); return (x1-x0-h)/G.vB + h/G.vH; };
+  const inRoom = travel(xs, xe), hiT = Xin/G.vH;
+  let hiLen = 0, tot = 0;
+  for (let row=0; row<r.nLen; row++){ const d0 = row*(r.len+r.gapX), d1 = d0 + r.len;
+    tot += r.len; hiLen += Math.max(0, Math.min(d1, decel - G.curtain) - Math.max(d0, accel - G.curtain)); }
+  return { Ln, Gs, K, Xp, Xin, accel, decel, late: accel > ideal + 0.01, th, inRoom, hiT, cov: tot ? clamp(hiLen/tot*100,0,100) : 0 };
+}
+
+/* ---------------- state ---------------- */
+let S, F = { hEncDead:false, vfdNoResp:false, vfdStuckHigh:false, stuck:new Set() };
+function posX(p){ return p==='ENTRY'?0 : p==='INLET'?G.inlet : G.exit; }
+function newState(){
+  S = { t:0, run:true, stopReq:null,
+    roomV:G.vB, cmd:'BASE', prevCmd:'BASE', cmdT:0, cmdEp:0, hRate:G.vB/P.highRes,
+    enc:{s1:0,s2:0,h:0}, beltPos:0,
+    sheets:[], sid:1, lid:1, loads:[], lastLoad:null, pendOverlap:false, pendMissing:false,
+    sens:{}, cov:{}, trend:[], lastTrend:-1, latched:new Set(), log:[], logDirty:true,
+    M:{prev:{}, onAt:{}, fifo:{}, dis:{}, inPrev:false, exPrev:false, tq:[]},
+    SI:{prev:false, open:null, loads:[], id:1, cmd:'BASE'}
+  };
+  for (const s of SEC) S.M.fifo[s] = [];
+}
+function log(level, src, msg, key){
+  if (key){ if (S.latched.has(key)) return false; S.latched.add(key); }
+  S.log.unshift({t:S.t, level, src, msg}); if (S.log.length>300) S.log.pop(); S.logDirty = true; return true;
+}
+function stopNow(){ S.run=false; S.stopReq=null; }
+function requestFinishStop(){ if (S.run) S.stopReq='finish'; }
+function hardM(msg, key){ if (log('HARD','MITSU',msg,key) && P.interlock) stopNow(); }
+function siemensAlarm(msg, key){ if (log('HARD','SIEMENS',msg,key) && P.interlock) requestFinishStop(); }
+const mm = inch => Math.round(inch*IN2MM);
+const fmtRel = inch => (inch>=0?'+':'−') + Math.abs(mm(inch)) + ' mm';
+
+/* ---------------- spawning & faults ---------------- */
+const fmtClock = t => { t = Math.max(0, t); const m = Math.floor(t/60), s2 = Math.floor(t%60); return `${m}:${String(s2).padStart(2,'0')}`; };
+function spawn(){
+  if (R.n>0 && S.loads.length>=R.n) return;
+  if (S.jobUntil && S.t < S.jobUntil) return;                 // job change: nothing fed
+  const last = S.lastLoad, x0 = G.viewX0 - 30; let front, stackOn = null;
+  if (!last) front = x0;
+  else {
+    const tail = Math.min(...last.sheets.map(s=>s.x-s.len));
+    if (tail - R.gapY < x0 - 40) return;
+    front = Math.min(x0, tail - R.gapY);                     // after a pause, start again at the infeed
+    if (S.pendOverlap){ front = tail + 10; S.pendOverlap=false; stackOn = new Set(last.sheets.map(s=>s.id));
+      log('INFO','SIM',`Fault: load ${S.lid} overlaps previous load by 10 in`); }
+  }
+  const r = {...R}, lanes = lateral(r);
+  const L = { id:S.lid++, r, p:predict(r), sheets:[] };
+  for (let row=0; row<r.nLen; row++) for (let c=0; c<r.nAcross; c++){
+    const n = Math.ceil(r.len);
+    const sh = { id:S.sid++, load:L, row, col:c, x: front - row*(r.len+r.gapX), len:r.len, n,
+      y0: lanes[c][0], y1: lanes[c][1], coat:new Float32Array(n), prevX:0, v:G.vB, vc:G.vB,
+      tIn:null, tEx:null, stackOn, sl:null };
+    sh.prevX = sh.x; L.sheets.push(sh); S.sheets.push(sh);
+  }
+  if (S.pendMissing && r.nAcross > 1){ S.pendMissing = false;
+    const gone = L.sheets.filter(sh => sh.col === r.nAcross-1 && sh.row === 0);
+    L.sheets = L.sheets.filter(sh => !gone.includes(sh)); S.sheets = S.sheets.filter(sh => !gone.includes(sh));
+    log('INFO','SIM',`Fault: load ${L.id} missing sheet in lane ${r.nAcross}`); }
+  S.loads.push(L); S.lastLoad = L;
+}
+function breakGlass(){
+  const cand = S.sheets.filter(s=>s.x>G.inlet && s.x-s.len<G.exit && !s.broken).sort((a,b)=>b.x-a.x)[0]
+            || S.sheets.filter(s=>s.x>0 && !s.broken).sort((a,b)=>b.x-a.x)[0];
+  if (!cand){ log('INFO','SIM','No glass on line to break'); return; }
+  const half = cand.len/2, n1 = Math.ceil(half);
+  const rear = {...cand, id:S.sid++, x: cand.x - half - 4, len: cand.len-half, n: Math.ceil(cand.len-half),
+    coat: cand.coat.slice(Math.floor(half)), broken:true, tIn:null, tEx:null};
+  rear.prevX = rear.x; cand.len = half; cand.n = n1; cand.coat = cand.coat.slice(0,n1); cand.broken = true;
+  cand.load.sheets.push(rear); S.sheets.push(rear);
+  log('INFO','SIM',`Fault: sheet in load ${cand.load.id} broken (4 in gap)`);
+}
+
+/* ---------------- simulation step ---------------- */
+function step(dt){
+  const g = G; S.t += dt;
+  if (S.run){
+    let target = S.cmd==='HIGH' ? g.vH : g.vB;
+    if (F.vfdNoResp) target = g.vB;
+    if (F.vfdStuckHigh && S.roomV >= g.vH*0.98) target = g.vH;
+    if (S.roomV < g.vB*0.5) S.roomV = g.vB;
+    if (P.rampS<=0) S.roomV = target;
+    else { const a = (g.vH-g.vB)/P.rampS*dt; S.roomV += clamp(target-S.roomV, -a, a); }
+  } else S.roomV = 0;
+  const chainV = S.run ? g.vB : 0;
+
+  S.enc.s1 += chainV*dt/P.slowRes; S.enc.s2 += chainV*dt/P.slowRes;
+  const hInst = F.hEncDead ? 0 : S.roomV/P.highRes;
+  S.enc.h += hInst*dt; S.hRate += (hInst - S.hRate)*Math.min(1, dt/0.12);
+  S.beltPos += S.roomV*dt;
+
+  for (const s of S.sheets){
+    const d = driveAt(s.x - s.len, s.x);
+    let v;
+    if (!S.run) v = 0;
+    else if (d==='room') v = S.roomV;
+    else if (d==='base') v = chainV;
+    else v = s.vc;                       // only on free rollers: keeps its own speed
+    if (S.run) s.vc = v;
+    s.drive = d; s.v = v; s.prevX = s.x; s.x += v*dt;
+  }
+  const sorted = [...S.sheets].sort((a,b)=>b.x-a.x);
+  for (let i=1;i<sorted.length;i++){
+    const s = sorted[i];
+    for (let j=0;j<i;j++){
+      const o = sorted[j];
+      if (o.y1<=s.y0 || o.y0>=s.y1) continue;
+      if ((s.stackOn && s.stackOn.has(o.id)) || (o.stackOn && o.stackOn.has(s.id))) continue;
+      const oTail = o.x - o.len;
+      if (s.x > oTail && s.prevX <= oTail + 0.6){
+        s.x = oTail; s.v = Math.min(s.v, o.v); s.vc = s.v;
+        log('SOFT','MOTION',`Glass contact: L${s.load.id} caught up with L${o.load.id}`, 'contact'+s.id);
+      }
+    }
+  }
+  for (const s of S.sheets){
+    if (s.x >= g.curtain && s.prevX - s.len < g.curtain){
+      const d0 = Math.max(0, Math.floor(s.prevX - g.curtain)), d1 = Math.min(s.n-1, Math.floor(s.x - g.curtain));
+      for (let d=d0; d<=d1; d++) if (!s.coat[d]) s.coat[d] = Math.max(s.v, 1e-3);
+    }
+    if (s.prevX < g.inlet && s.x >= g.inlet) s.tIn = S.t;
+    if (s.prevX < g.exit && s.x >= g.exit) s.tEx = S.t;
+    const L = s.sl, tl = s.x - s.len, ptl = s.prevX - s.len;
+    if (L){   // the whole merged load is treated as one big sheet
+      if (s.prevX < g.inlet && s.x >= g.inlet && L.tInOn==null) L.tInOn = S.t;
+      if (ptl < g.inlet && tl >= g.inlet && ++L.nInOff === L.nPhys) L.tInOff = S.t;
+      if (s.prevX < g.exit && s.x >= g.exit && L.tExOn==null) L.tExOn = S.t;
+      if (ptl < g.exit && tl >= g.exit && ++L.nExOff === L.nPhys) L.tExOff = S.t;
+      roomTimer(L);
+    }
+  }
+  if (S.jobUntil && S.t >= S.jobUntil){ S.jobUntil = 0; log('MOTION','HMI',`Job change finished — feeding ${R.name}`); }
+  spawn();
+  const xEnd = Math.max(g.exit, g.wallOut) + 160;
+  S.sheets = S.sheets.filter(s => s.x - s.len < xEnd);
+
+  for (const p of POS){
+    const px = posX(p);
+    for (const sc of SEC){
+      const covAt = cy => S.sheets.some(s => s.x >= px && s.x - s.len < px && s.y0 + P.covMargin <= cy && s.y1 - P.covMargin >= cy);
+      const cA = covAt(sensY(sc,'A')), cB = covAt(sensY(sc,'B'));
+      S.cov[p+sc] = cA || cB;
+      S.sens[`${p}-${sc}-A`] = cA && !F.stuck.has(`${p}-${sc}-A`);
+      S.sens[`${p}-${sc}-B`] = cB && !F.stuck.has(`${p}-${sc}-B`);
+    }
+  }
+  if (P.mitsu) mitsubishi(dt);
+  siemens();
+
+  if (S.stopReq==='finish' && !S.SI.loads.some(L=>L.state==='HIGH')) stopNow();
+  S.cmd = S.run ? S.SI.cmd : 'BASE';
+  if (S.cmd !== S.prevCmd){ S.prevCmd = S.cmd; S.cmdT = 0; S.cmdEp++; } else S.cmdT += dt;
+  if (S.run){
+    const grace = P.rampS + 0.4;
+    if (S.cmd==='HIGH' && S.cmdT>grace && S.hRate < 0.5*g.vH/P.highRes)
+      siemensAlarm('RUN-UP FALSE: high speed commanded, no high-speed feedback', 'ru'+S.cmdEp);
+    if (S.cmd==='BASE' && S.cmdT>grace && S.hRate > 2*g.vB/P.highRes)
+      siemensAlarm('RETARDATION FALSE: base commanded, feedback still high', 'rt'+S.cmdEp);
+  }
+  if (S.t - S.lastTrend >= 0.05){
+    S.lastTrend = S.t;
+    S.trend.push({t:S.t, v:S.roomV/MM2IN, c: S.cmd==='HIGH'?P.vHighMM:P.vBaseMM, run:S.run});
+    if (S.trend.length>1200) S.trend.splice(0, 200);
+  }
+}
+
+/* ---------------- Siemens: measure, merge, speed-up, back to base ---------------- */
+function roomTimer(L){
+  if (L.inRoom != null) return;
+  const cfg = timerCfg(), t0 = cfg.start==='inletOff' ? L.tInOff : L.tInOn, t1 = cfg.stop==='exitOn' ? L.tExOn : L.tExOff;
+  if (t0 == null || t1 == null) return;
+  if (t1 < t0){ L.inRoom = NaN; log('SOFT','MOTION',`S${L.id} in-room timer: ${TLBL[cfg.stop]} came before ${TLBL[cfg.start]}`); return; }
+  L.inRoom = t1 - t0;
+  log('MOTION','MOTION',`S${L.id} IN ROOM ${L.inRoom.toFixed(2)} s (${TLBL[cfg.start]} → ${TLBL[cfg.stop]})${L.tDecel!=null&&L.tAccel!=null?` · high speed ${(L.tDecel-L.tAccel).toFixed(2)} s`:''}`);
+}
+function frontOf(L){ let m = null; for (const s of S.sheets) if (s.sl===L && (m===null || s.x > m)) m = s.x; return m; }
+function siemens(){
+  const SI = S.SI, c = Math.floor(S.enc.s1);
+  const sig = P.siemensEntry==='left'
+    ? (S.sens['ENTRY-LEFT-A'] || S.sens['ENTRY-LEFT-B'])
+    : SEC.some(sc => S.sens[`ENTRY-${sc}-A`] || S.sens[`ENTRY-${sc}-B`]);
+  const attach = L => { for (const sh of S.sheets) if (sh.prevX < 0.6 && sh.x >= -0.01 && !sh.sl){ sh.sl = L; L.nPhys = (L.nPhys||0) + 1; } };
+
+  if (sig && !SI.prev){
+    const o = SI.open; let joined = false;
+    if (o && !o.final){
+      const last = o.sheets[o.sheets.length-1];
+      if (c - o.lastOff <= P.gapLimit && last.p < P.batchLimit && o.sheets.length < P.maxSheets){ o.sheets.push({on:c}); joined = true; attach(o); }
+      if (!joined) finalize(o);
+    }
+    if (!joined){ const n = {id:SI.id++, sheets:[{on:c}], firstOn:c, lastOff:null, final:false, state:'MEAS', nPhys:0, nInOff:0, nExOff:0}; SI.open = n; SI.loads.push(n); attach(n); }
+  }
+  if (!sig && SI.prev && SI.open && !SI.open.final){
+    const o = SI.open, sh = o.sheets[o.sheets.length-1];
+    sh.off = c; sh.p = c - sh.on; o.lastOff = c;
+    if (sh.p >= P.batchLimit || o.sheets.length >= P.maxSheets) finalize(o);
+  }
+  if (SI.open && !SI.open.final){
+    const o = SI.open;
+    if (c - o.firstOn >= P.chargeLong && !o.ctl){ o.ctl = true;
+      log('HARD','SIEMENS',`CHARGE TOO LONG: load S${o.id} ≥ ${P.chargeLong} slow p — line stopped`); stopNow(); }
+    if (!sig && o.lastOff!=null && c - o.lastOff > P.gapLimit) finalize(o);
+  }
+  SI.prev = sig;
+
+  for (const L of SI.loads){
+    if (L.state==='WAIT' && c >= L.accelTarget){
+      if (SI.loads.some(o=>o!==L && o.state==='HIGH')) log('SOFT','MOTION',`S${L.id} speeds up while another load is still at high speed (design expects one at a time)`);
+      L.state='HIGH'; L.hAt=S.enc.h; L.tAccel=S.t; L.late = c - L.accelTarget; L.frontAtAccel = frontOf(L);
+      log('MOTION','MOTION',`S${L.id} SPEED-UP · front ${L.frontAtAccel!=null?mm(L.frontAtAccel)+' mm from Entry ('+fmtRel(L.frontAtAccel-G.inlet)+' vs Inlet)':'?'}${L.late>2?` · ${L.late} p late (L known only at Entry OFF)`:''}`);
+    } else if (L.state==='HIGH' && S.enc.h - L.hAt >= L.Xp){
+      L.state='DONE'; L.tDecel=S.t; L.frontAtDecel = frontOf(L);
+      log('MOTION','MOTION',`S${L.id} BACK TO BASE · front ${L.frontAtDecel!=null?mm(L.frontAtDecel)+' mm from Entry ('+fmtRel(L.frontAtDecel-G.exit)+' vs Exit)':'?'}`);
+    }
+  }
+  SI.cmd = SI.loads.some(L=>L.state==='HIGH') ? 'HIGH' : 'BASE';
+  if (SI.loads.length > 40) SI.loads = SI.loads.filter((L,i)=> L.state!=='DONE' || i > SI.loads.length-15);
+}
+function finalize(o){
+  o.final = true;
+  const span = o.lastOff - o.firstOn, sum = o.sheets.reduce((a,s)=>a+(s.p||0),0);
+  const Lp = P.lenMode==='sum' ? sum : span, Lin = Lp*P.slowRes;
+  o.Lp = Lp; o.Lin = Lin;
+  o.Gs = P.gsBasis==='slow' ? Lp : Lin/P.highRes;
+  o.K = kFor(o.Gs);
+  o.Xp = (1110 - o.Gs) + (2/3)*o.Gs - o.K;
+  o.accelTarget = o.firstOn + P.accelPulses + (2/3)*Lp;
+  o.state = 'WAIT';
+  log('INFO','SIEMENS',`S${o.id} closed: ${o.sheets.length} sheet(s), L ${Lp} p = ${Lin.toFixed(1)} in, K ${o.K}, X ${o.Xp.toFixed(0)} hp = ${mm(o.Xp*P.highRes)} mm`);
+}
+
+/* ---------------- Mitsubishi layer (optional) ---------------- */
+function mitsubishi(dt){
+  const M = S.M, tol = P.tolPulses;
+  for (const sc of SEC) if (!secOn(sc)) for (const p of POS){ const k = p+sc; M.prev[k] = false; M.onAt[k] = null; M.dis[k] = 0; M.fifo[sc] = []; }
+  for (const p of POS) for (const sc of SEC.filter(secOn)){
+    const a = S.sens[`${p}-${sc}-A`], b = S.sens[`${p}-${sc}-B`], k = p+sc;
+    if (a !== b){ M.dis[k] = (M.dis[k]||0) + dt;
+      if (M.dis[k] > 0.15) log('SOFT','MITSU',`Sensor fault ${p}-${sc}-${a?'B':'A'} (pair disagrees)`, 'soft'+p+sc+(a?'B':'A'));
+    } else M.dis[k] = 0;
+    if (S.cov[k] && F.stuck.has(`${p}-${sc}-A`) && F.stuck.has(`${p}-${sc}-B`)) hardM(`SENSOR PAIR LOST ${p}-${sc}`, 'pair'+k);
+  }
+  const en = SEC.filter(secOn);
+  if (en.length > 1) for (const p of POS){
+    const px = posX(p), k = 'lane'+p;
+    const sig = en.map(sc => S.sens[`${p}-${sc}-A`] || S.sens[`${p}-${sc}-B`]);
+    const sh = S.sheets.find(s => s.x >= px && s.x - s.len < px), v = sh ? sh.v : 0;
+    if (sig.some(Boolean) && !sig.every(Boolean)){
+      M[k] = (M[k]||0) + v*dt;
+      if (M[k] > P.laneTol && !M[k+'f']){ M[k+'f'] = true; hardM(`LANE MISMATCH ${p}: ${en.map((sc,i)=>sc+(sig[i]?' ON':' off')).join(' / ')}`, k + S.t.toFixed(2)); }
+    } else { M[k] = 0; M[k+'f'] = false; }
+  }
+  for (const p of ['ENTRY','EXIT']) for (const sc of SEC.filter(secOn)){
+    const sig = S.sens[`${p}-${sc}-A`] || S.sens[`${p}-${sc}-B`], k = p+sc;
+    const enc = Math.floor(p==='ENTRY' ? S.enc.s1 : S.enc.s2);
+    if (sig && !M.prev[k]) M.onAt[k] = enc;
+    if (!sig && M.prev[k] && M.onAt[k]!=null){
+      const pulses = enc - M.onAt[k];
+      if (p==='ENTRY'){
+        const rp = Math.round(HMI.len / P.slowRes);
+        M.fifo[sc].push({entry:pulses, recipe:rp});
+        if (Math.abs(rp - pulses) > tol) hardM(`LENGTH ${sc}: Recipe ${rp} p vs Entry ${pulses} p`, 'lenE'+S.t.toFixed(2)+sc);
+      } else {
+        const e = M.fifo[sc].shift();
+        if (!e) hardM(`LENGTH ${sc}: Exit piece ${pulses} p with no Entry record`, 'lenX'+S.t.toFixed(2)+sc);
+        else if (Math.abs(e.recipe - pulses) > tol || Math.abs(e.entry - pulses) > tol)
+          hardM(`LENGTH ${sc}: Recipe ${e.recipe} / Entry ${e.entry} / Exit ${pulses} p`, 'lenX'+S.t.toFixed(2)+sc);
+      }
+    }
+    M.prev[k] = sig;
+  }
+  const deb = (raw, key) => { if (raw){ M[key+'off']=0; return true; } M[key+'off']=(M[key+'off']||0)+dt; return M[key+'off'] < P.timerDebounce && M[key+'st']; };
+  const inAny = deb(SEC.filter(secOn).some(sc => S.sens[`INLET-${sc}-A`] || S.sens[`INLET-${sc}-B`]), 'in');
+  const exAny = deb(SEC.filter(secOn).some(sc => S.sens[`EXIT-${sc}-A`] || S.sens[`EXIT-${sc}-B`]), 'ex');
+  M.inst = inAny; M.exst = exAny;
+  if (inAny && !M.inPrev) M.tq.push(S.t);
+  if (exAny && !M.exPrev){ const t0 = M.tq.shift();
+    if (t0 != null && S.t - t0 > P.timerLimit) hardM(`SPEED-UP CHECK: Inlet→Exit ${(S.t-t0).toFixed(2)} s > ${P.timerLimit} s`, 'su'+S.t.toFixed(2)); }
+  M.inPrev = inAny; M.exPrev = exAny;
+}
+
+/* ---------------- rendering ---------------- */
+const cv = $('#cv'), ctx = cv.getContext('2d'), tr = $('#tr'), tctx = tr.getContext('2d');
+let C = {}, VIEW = null;
+function readColors(){ const cs = getComputedStyle(document.documentElement);
+  for (const k of ['ink','muted','faint','line','line2','base','high','alarm','ok','soft','glass','glassEdge','paint','thick','free','chain','head','inv','belt','beltDark','freeNew','room','canvas','curtain','panel'])
+    C[k] = cs.getPropertyValue('--'+k).trim(); }
+/* paint colours per room (belts stay green in both rooms) */
+const PAINT = { base:'#FF7032', top:'#7EA6B4' };
+const paintCol = () => PAINT[room];
+const thickCol = () => mix(PAINT[room], '#000000', 0.45);
+function paintLegend(){
+  const p = paintCol(), t = thickCol();
+  $('#lgPaint').style.background = p;
+  $('#lgThick').style.background = `repeating-linear-gradient(135deg, ${t} 0 3px, ${p} 3px 5px)`;
+  $('#lgPaintName').textContent = room==='top' ? 'Top paint' : 'Base paint';
+}
+function mix(a,b,t){ const pa=hex(a), pb=hex(b); return `rgb(${pa.map((v,i)=>Math.round(v+(pb[i]-v)*t)).join(',')})`; }
+function hex(h){ h=h.replace('#',''); if(h.length===3) h=h.split('').map(x=>x+x).join(''); return [0,2,4].map(i=>parseInt(h.substr(i,2),16)); }
+function fit(canvas, h){
+  const dpr = window.devicePixelRatio||1, w = canvas.clientWidth;
+  if (canvas.width !== Math.round(w*dpr) || canvas.height !== Math.round(h*dpr)){ canvas.width=Math.round(w*dpr); canvas.height=Math.round(h*dpr); canvas.style.height=h+'px'; }
+  return {w,h,dpr};
+}
+function draw(){
+  const W0 = cv.clientWidth, Hh = Math.max(250, Math.min(440, W0*0.40));
+  const {w,h,dpr} = fit(cv, Hh); ctx.setTransform(dpr,0,0,dpr,0,0);
+  const g = G, x0 = g.viewX0, x1 = Math.max(g.exit, g.wallOut, ...g.rollers.map(r=>r.b)) + 12, sx = w/(x1-x0);
+  const HH = HW(), top = 46, bot = h-30, sy = (bot-top)/(2*HH+10);
+  const X = x => (x-x0)*sx, Y = y => top + (y+HH+5)*sy;
+  VIEW = {x0, sx};
+  ctx.clearRect(0,0,w,h); ctx.fillStyle = C.canvas; ctx.fillRect(0,0,w,h);
+  ctx.font = '600 10px IBM Plex Mono, monospace'; ctx.textBaseline = 'middle';
+
+  ctx.strokeStyle = C.room; ctx.lineWidth = 1.5; ctx.setLineDash([]);
+  ctx.strokeRect(X(g.wallIn), Y(-HH-3), X(g.wallOut)-X(g.wallIn), Y(HH+3)-Y(-HH-3));
+  ctx.fillStyle = C.room; ctx.textAlign='center';
+  ctx.fillText((room==='top'?'TOP':'BASE')+' PAINT ROOM', X((g.wallIn+g.wallOut)/2), Y(-HH-3)-8);
+
+  const yA = Y(-HH), yB = Y(HH);
+  for (const r of g.rollers){ ctx.fillStyle = C[TYPES[r.type].col]; const xa = X(r.a); ctx.fillRect(xa, yA, Math.max(2, X(r.b)-xa), yB-yA); }
+  for (const b of g.belts){
+    ctx.fillStyle = C.belt; ctx.fillRect(X(b.a), yA, X(b.b)-X(b.a), yB-yA);
+    ctx.save(); ctx.beginPath(); ctx.rect(X(b.a), yA, X(b.b)-X(b.a), yB-yA); ctx.clip();
+    ctx.strokeStyle = C.beltDark; ctx.lineWidth = 1;
+    const off = S.beltPos % 12;
+    for (let x = b.a-12+off; x < b.b+12; x += 12){ ctx.beginPath(); ctx.moveTo(X(x), yA); ctx.lineTo(X(x), yB); ctx.stroke(); }
+    ctx.restore();
+  }
+  const vline = (x, col, label, dash=[4,4], yl=top-26) => {
+    ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash(dash);
+    ctx.beginPath(); ctx.moveTo(X(x), top-18); ctx.lineTo(X(x), bot+6); ctx.stroke(); ctx.setLineDash([]);
+    if (label){ ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.fillText(label, X(x), yl); }
+  };
+  vline(0, C.alarm, 'ENTRY');
+  vline(g.A, C.high, `A ${P.accelPulses}p`, [2,3], top-12);
+  vline(g.inlet, C.room, 'INLET', [4,4], (Math.abs(g.inlet)*sx < 60) ? top-38 : top-26);
+  vline(g.exit, C.soft, 'EXIT');
+
+  const vB = g.vB, vH = g.vH;
+  for (const s of S.sheets){
+    const xa = X(s.x - s.len), xb = X(s.x), ya = Y(s.y0), yb = Y(s.y1);
+    if (xb < 0 || xa > w) continue;
+    ctx.fillStyle = C.glass; ctx.fillRect(xa, ya, xb-xa, yb-ya);
+    let d = 0;
+    while (d < s.n){
+      const v = s.coat[d]; if (!v){ d++; continue; }
+      const bin = Math.round(clamp((v - vB)/(vH - vB),0,1)*4);
+      let e = d+1; while (e < s.n && s.coat[e] && Math.round(clamp((s.coat[e]-vB)/(vH-vB),0,1)*4)===bin) e++;
+      const rx = X(s.x - Math.min(e, s.len)), rw = X(s.x - d) - rx, ry = ya+1, rh = yb-ya-2;
+      ctx.fillStyle = bin===4 ? paintCol() : mix(thickCol(), paintCol(), bin/4);
+      ctx.fillRect(rx, ry, rw, rh);
+      if (bin < 4){   // thick film: hatch so it reads differently from normal film in either room colour
+        ctx.save(); ctx.beginPath(); ctx.rect(rx, ry, rw, rh); ctx.clip();
+        ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1.2;
+        for (let k = rx - rh; k < rx + rw; k += 6){ ctx.beginPath(); ctx.moveTo(k, ry+rh); ctx.lineTo(k+rh, ry); ctx.stroke(); }
+        ctx.restore();
+      }
+      d = e;
+    }
+    ctx.strokeStyle = s.broken ? C.alarm : C.glassEdge; ctx.lineWidth = s.broken ? 1.6 : 1; ctx.strokeRect(xa+.5, ya+.5, xb-xa-1, yb-ya-1);
+    { // labels: load no. on the first sheet, size (W × L in) on every sheet that has room
+      const wIn = +(s.y1 - s.y0).toFixed(1), lIn = +s.len.toFixed(1), size = `${wIn}×${lIn}"`;
+      ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.font='600 10px IBM Plex Mono, monospace';
+      const first = s.col===0 && s.row===0, idTxt = first ? 'L'+s.load.id : '';
+      const full = idTxt ? `${idTxt}  ${size}` : size;
+      const fits = t => ctx.measureText(t).width + 8 <= xb-xa && yb-ya >= 14;
+      const txt = fits(full) ? full : (idTxt && fits(idTxt) ? idTxt : (fits(size) ? size : ''));
+      if (txt){
+        const tw = ctx.measureText(txt).width;
+        ctx.globalAlpha = .75; ctx.fillStyle = C.canvas; ctx.fillRect(xa+2, ya+2, tw+4, 13); ctx.globalAlpha = 1;
+        ctx.fillStyle = C.ink; ctx.fillText(txt, xa+4, ya+9);
+      }
+    }
+  }
+  const cx = X(g.curtain);
+  ctx.fillStyle = paintCol(); ctx.globalAlpha = .9; ctx.fillRect(cx - Math.max(2, sx*1.2), Y(-HH), Math.max(4, sx*2.4), Y(HH)-Y(-HH));
+  ctx.globalAlpha = .55; ctx.fillStyle = C.panel;
+  const ph = (S.t*80) % 10;
+  for (let y = -HH + ph; y < HH; y += 10) ctx.fillRect(cx-0.5, Y(y), 1, sy*3);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = paintCol(); ctx.beginPath(); ctx.moveTo(cx-7, top-18); ctx.lineTo(cx+7, top-18); ctx.lineTo(cx, top-6); ctx.closePath(); ctx.fill();
+  ctx.textAlign='center'; ctx.fillText('CURTAIN', cx, top-30);
+
+  for (const p of POS){
+    const px = X(posX(p));
+    for (const sc of SEC) for (const [i,ab] of ['A','B'].entries()){
+      const k = `${p}-${sc}-${ab}`, yy = Y(sensY(sc, ab)), on = S.sens[k], stuck = F.stuck.has(k);
+      ctx.globalAlpha = secOn(sc) ? 1 : 0.28;
+      ctx.fillStyle = on ? (p==='ENTRY'?C.alarm:p==='INLET'?C.room:C.soft) : C.canvas;
+      ctx.fillRect(px-4, yy-4, 8, 8);
+      ctx.strokeStyle = stuck ? C.alarm : C.ink; ctx.lineWidth = stuck ? 2 : 1; ctx.strokeRect(px-4, yy-4, 8, 8);
+      if (stuck){ ctx.beginPath(); ctx.moveTo(px-4,yy-4); ctx.lineTo(px+4,yy+4); ctx.moveTo(px+4,yy-4); ctx.lineTo(px-4,yy+4); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+  }
+  ctx.font = '700 10px IBM Plex Mono, monospace'; ctx.textAlign = 'right';
+  for (const [i,sc] of SEC.entries()){
+    const yy = Y(SECY[sc]), tx = X(0) - 9, lbl = `${i+1} ${sc}`, tw = ctx.measureText(lbl).width;
+    ctx.fillStyle = C.canvas; ctx.globalAlpha = .85; ctx.fillRect(tx - tw - 3, yy - 7, tw + 6, 14); ctx.globalAlpha = 1;
+    ctx.fillStyle = C.ink; ctx.fillText(lbl, tx, yy);
+  }
+  ctx.textAlign = 'left'; ctx.font = '600 10px IBM Plex Mono, monospace'; ctx.fillStyle = C.muted;
+  ctx.fillText('↑ LEFT side (facing flow →)', 4, Y(-HH-3) - 8);
+
+  /* projected trigger points (glass front): ▲ speed-up, ▼ back to base */
+  ctx.font = '600 9.5px IBM Plex Mono, monospace';
+  let lane = 0;
+  for (const L of S.SI.loads){
+    let x = null, col, txt;
+    if (L.state==='WAIT'){ x = Math.max(g.A + (2/3)*L.Lin, frontOf(L) ?? -1e9); col = C.high; txt = `▲S${L.id}`; }
+    else if (L.state==='HIGH' && L.frontAtAccel!=null){ x = L.frontAtAccel + L.Xp*P.highRes; col = C.base; txt = `▼S${L.id}`; }
+    if (x==null) continue;
+    ctx.strokeStyle = col; ctx.setLineDash([1,3]); ctx.beginPath(); ctx.moveTo(X(x), Y(-HH-5)); ctx.lineTo(X(x), bot); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = col; ctx.textAlign='center'; ctx.fillText(txt, X(x), bot+10+(lane++%2)*10);
+  }
+  ctx.font = '500 10px IBM Plex Sans, sans-serif'; ctx.fillStyle = C.muted; ctx.textAlign='center';
+  ctx.textAlign='left'; ctx.fillText('← from oven / metal dry', 6, h-8); ctx.textAlign='right';
+  ctx.fillText('to oven →', w-6, h-8);
+  const hi = S.roomV > (vB+vH)/2;
+  ctx.textAlign='right'; ctx.font='600 12px IBM Plex Mono, monospace';
+  ctx.fillStyle = !S.run ? C.alarm : hi ? C.high : C.base;
+  ctx.fillText(!S.run ? 'LINE STOPPED' : `${(S.roomV/MM2IN).toFixed(0)} mm/s ${hi?'HIGH':'BASE'}`, w-10, 14);
+  if (S.stopReq){ ctx.fillStyle = C.alarm; ctx.fillText('E-STOP: finishing high-speed cycle…', w-10, 30); }
+  if (S.jobUntil && S.t < S.jobUntil){   // job-change pill, bottom centre of the rollers
+    const msg = `JOB CHANGE → ${R.name} · next load in ${fmtClock(S.jobUntil - S.t)}`;
+    ctx.font = '700 12px IBM Plex Mono, monospace'; const tw = ctx.measureText(msg).width + 24, bx = w/2 - tw/2, by = Y(HH) - 34;
+    ctx.globalAlpha = .92; ctx.fillStyle = C.panel; ctx.fillRect(bx, by, tw, 24); ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.soft; ctx.lineWidth = 1.5; ctx.strokeRect(bx+.5, by+.5, tw-1, 23);
+    ctx.fillStyle = C.soft; ctx.textAlign = 'center'; ctx.fillText(msg, w/2, by + 12); }
+  if (!running){   // paused badge
+    const msg = '❚❚  PAUSED — press ▶ Run or Space'; ctx.font = '700 13px IBM Plex Sans, sans-serif';
+    const tw = ctx.measureText(msg).width + 28, bx = w/2 - tw/2, by = Y(0) - 16;
+    ctx.globalAlpha = .9; ctx.fillStyle = C.panel; ctx.fillRect(bx, by, tw, 32); ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.soft; ctx.lineWidth = 2; ctx.strokeRect(bx+1, by+1, tw-2, 30);
+    ctx.fillStyle = C.soft; ctx.textAlign = 'center'; ctx.fillText(msg, w/2, by + 16);
+  }
+}
+function drawTrend(){
+  const {w,h,dpr} = fit(tr, 130); tctx.setTransform(dpr,0,0,dpr,0,0);
+  tctx.clearRect(0,0,w,h);
+  const L = 44, Rr = 8, T = 8, B = h-20, span = 40, tEnd = Math.max(span, S.t), tStart = tEnd - span;
+  const ymax = P.vHighMM*1.1, Xt = t => L + (t-tStart)/span*(w-L-Rr), Yv = v => B - v/ymax*(B-T);
+  tctx.font = '10px IBM Plex Mono, monospace'; tctx.fillStyle = C.muted; tctx.textAlign='right'; tctx.textBaseline='middle';
+  tctx.strokeStyle = C.line; tctx.lineWidth = 1;
+  for (const v of [P.vBaseMM, P.vHighMM]){ tctx.beginPath(); tctx.moveTo(L, Yv(v)); tctx.lineTo(w-Rr, Yv(v)); tctx.stroke(); tctx.fillText(v, L-6, Yv(v)); }
+  tctx.textAlign='center';
+  for (let t = Math.ceil(tStart/5)*5; t <= tEnd; t += 5) tctx.fillText(t+'s', Xt(t), h-8);
+  const pts = S.trend.filter(p => p.t >= tStart);
+  if (pts.length > 1){
+    tctx.strokeStyle = C.muted; tctx.setLineDash([3,3]); tctx.beginPath();
+    pts.forEach((p,i) => i ? tctx.lineTo(Xt(p.t), Yv(p.run?p.c:0)) : tctx.moveTo(Xt(p.t), Yv(p.run?p.c:0))); tctx.stroke(); tctx.setLineDash([]);
+    tctx.strokeStyle = C.high; tctx.lineWidth = 2; tctx.beginPath();
+    pts.forEach((p,i) => i ? tctx.lineTo(Xt(p.t), Yv(p.v)) : tctx.moveTo(Xt(p.t), Yv(p.v))); tctx.stroke();
+  }
+  for (const a of S.log) if (a.level==='HARD' && a.t >= tStart){ tctx.fillStyle = C.alarm; tctx.fillRect(Xt(a.t)-1, T, 2, B-T); }
+}
+cv.addEventListener('mousemove', e => {
+  if (!VIEW) return;
+  const rect = cv.getBoundingClientRect(), xIn = (e.clientX - rect.left)/VIEW.sx + VIEW.x0, xm = mm(xIn);
+  const hits = [];
+  positions(LAYOUT[room]).forEach(([a,b],i) => { if (xm >= a && xm <= b) hits.push(`#${i+1} ${TYPES[LAYOUT[room].rows[i].type].label}`); });
+  const glass = S.sheets.filter(s => xIn <= s.x && xIn >= s.x - s.len).map(s=>`L${s.load.id} ${(s.v/MM2IN).toFixed(0)} mm/s`);
+  $('#hover').className = '';
+  $('#hover').textContent = `${xm} mm from Entry · ${fmtRel(xIn - G.inlet)} vs Inlet · ${fmtRel(xIn - G.curtain)} vs curtain · ${fmtRel(xIn - G.exit)} vs Exit` +
+    (hits.length ? ` · ${[...new Set(hits)].join(', ')}` : '') + (glass.length ? ` · ${[...new Set(glass)].join(', ')}` : '');
+});
+
+/* ---------------- UI ---------------- */
+const f1 = v => v==null || isNaN(v) ? '—' : (+v).toFixed(1);
+const f2 = v => v==null || isNaN(v) ? '—' : (+v).toFixed(2);
+const mmCell = v => v==null ? '<span class="dim">…</span>' : mm(v);
+function loadData(L){
+  const lead = L.sheets[0], si = lead && lead.sl, p = L.p;
+  let tot=0, hiN=0;
+  for (const s of L.sheets) for (let d=0; d<s.n; d++){ const v=s.coat[d]; if (v){ tot++; if (v >= 0.9*G.vH) hiN++; } }
+  const fin = si && si.final;
+  return { id:L.id, size:L.r.name, room, Lin: fin ? si.Lin : null, Gs: fin ? si.Lp : null, K: fin ? si.K : null, Xp: fin ? Math.round(si.Xp) : null,
+    upPred: mm(p.accel), upSim: si && si.frontAtAccel!=null ? mm(si.frontAtAccel) : null,
+    basePred: mm(p.decel), baseSim: si && si.frontAtDecel!=null ? mm(si.frontAtDecel) : null,
+    covPred: p.cov, covSim: tot ? hiN/tot*100 : null, covDone: L.sheets.every(s => s.x - s.len > G.curtain),
+    hiPred: p.hiT, hiSim: si && si.tDecel!=null && si.tAccel!=null ? si.tDecel - si.tAccel : null,
+    roomPred: p.inRoom, roomSim: si && si.inRoom!=null && !isNaN(si.inRoom) ? si.inRoom : null };
+}
+function downloadCSV(){
+  const cfg = timerCfg();
+  const cols = [['id','Load'],['room','Room'],['size','Size'],['Lin','PLC L (in)'],['Gs','Gs (slow p)'],['K','K'],['Xp','X (high p)'],
+    ['upPred','Speed-up front pred (mm)'],['upSim','Speed-up front sim (mm)'],['basePred','Back-to-base front pred (mm)'],['baseSim','Back-to-base front sim (mm)'],
+    ['covPred','Curtain @high pred (%)'],['covSim','Curtain @high sim (%)'],['hiPred','High speed pred (s)'],['hiSim','High speed sim (s)'],
+    ['roomPred',`In room pred (s) ${TLBL[cfg.start]}→${TLBL[cfg.stop]}`],['roomSim',`In room sim (s) ${TLBL[cfg.start]}→${TLBL[cfg.stop]}`]];
+  const fmt = v => v==null || (typeof v==='number' && isNaN(v)) ? '' : typeof v==='number' ? (Math.round(v*1000)/1000) : `"${String(v).replace(/"/g,'""')}"`;
+  const lines = [cols.map(c=>`"${c[1]}"`).join(',')].concat(S.loads.map(L => { const d = loadData(L); return cols.map(c=>fmt(d[c[0]])).join(','); }));
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + lines.join('\n')], {type:'text/csv'}));
+  a.download = `flow-coater-${room}-${new Date().toISOString().slice(0,16).replace(/[:T]/g,'')}.csv`; document.body.appendChild(a); a.click(); a.remove();
+}
+function updateUI(){
+  const hi = S.roomV > (G.vB+G.vH)/2;
+  $('#cSpeed').textContent = `${(S.roomV/MM2IN).toFixed(0)} mm/s`; $('#cSpeed').className = 'v ' + (!S.run?'alarm':hi?'high':'base');
+  $('#cCmd').textContent = S.cmd; $('#cCmd').className = 'v ' + (S.cmd==='HIGH'?'high':'base');
+  $('#cSim').textContent = running ? 'RUNNING' : 'PAUSED'; $('#cSim').className = 'v ' + (running ? 'ok' : 'base');
+  $('#cLine').textContent = !S.run ? 'STOPPED' : S.stopReq ? 'STOPPING' : running ? 'MOVING' : 'FROZEN'; $('#cLine').className = 'v ' + (!S.run||S.stopReq ? 'alarm' : running ? 'ok' : 'muted');
+  $('#cTime').textContent = S.t.toFixed(1)+' s';
+  { const same = sizeSig(formSize()) === sizeSig(R), b = $('#confirmBtn');
+    b.disabled = same; b.textContent = same ? 'Size unchanged' : 'Confirm (send to PLC)';
+    b.title = same ? 'Change the size first — a job change only happens when the size changes' : `Job change to the new size (${$('#rJob').value||0} min)`; }
+  { const on = S.jobUntil && S.t < S.jobUntil;
+    $('#jobChip').classList.toggle('active', !!on);
+    $('#cJob').textContent = on ? `${fmtClock(S.jobUntil - S.t)} left` : '—'; $('#cJob').className = 'v ' + (on ? 'base' : 'muted');
+    if (on) $('#jobBar').style.width = (100*(S.t - S.jobStart)/(S.jobUntil - S.jobStart)).toFixed(1) + '%';
+    $('#jobChip').title = on ? `Job change → ${R.name}, started at sim ${fmtClock(S.jobStart)}` : 'No job change running'; }
+  $('#hmiNow').textContent = `${HMI.name} · sensors ${SEC.filter(secOn).map(x=>x[0]).join(' ')}`;
+
+  { const pv = $('#preset').value, T = {nAcross:+$('#rAcross').value||1, w:+$('#rW').value||0, align:$('#rAlign').value,
+      len:+$('#rLen').value||0, nLen:+$('#rNLen').value||1, gapX:+$('#rGapX').value||0};
+    const exp = pv!=='custom' ? PRESETS[+pv].on : '', got = coverage(T), lab = c => c.split('').map(d=>['L','C','R'][d-1]).join(' ') || '—';
+    const p = predict(T);
+    $('#rNote').innerHTML = `PLC L ${p.Ln.toFixed(1)} in = ${(p.Ln/P.slowRes).toFixed(0)} p · K ${p.K} · X ${p.Xp.toFixed(0)} hp = ${mm(p.Xin)} mm<br>` +
+      `Speed-up: front at <b class="hi">${mm(p.accel)} mm</b> (${fmtRel(p.accel-G.inlet)} vs Inlet)${p.late?' <span class="warn">late*</span>':''}<br>` +
+      `Back to base: front at <b class="lo">${mm(p.decel)} mm</b> (${fmtRel(p.decel-G.exit)} vs Exit)<br>` +
+      `Sensors covered: <b class="mono">${lab(got)}</b>` + (exp ? ([...exp].every(d=>got.includes(d))
+          ? ` <span class="pass">✓ all ON sensors (${lab(exp)}) covered</span>` + ([...got].some(d=>!exp.includes(d)) ? ` <span class="dim">· ${lab([...got].filter(d=>!exp.includes(d)).join(''))} covered but OFF → ignored</span>` : '')
+          : ` <span class="fail">✗ ON sensor ${lab([...exp].filter(d=>!got.includes(d)).join(''))} not covered</span>`) : '') +
+      ((p.Ln/P.slowRes) >= P.chargeLong ? ' <span class="fail">≥ Charge Too Long</span>' : '') +
+      (S.jobUntil && S.t < S.jobUntil ? `<br><b class="warn">Job change → ${R.name}: next load in ${fmtClock(S.jobUntil - S.t)}</b> <button class="sm" id="jobSkip">skip</button>` : ''); }
+
+  const c = Math.floor(S.enc.s1);
+  $('#plc tbody').innerHTML = S.SI.loads.slice(-8).reverse().map(L => {
+    const rem = L.state==='WAIT' ? `${Math.max(0, L.accelTarget - c).toFixed(0)} sp` : L.state==='HIGH' ? `${Math.max(0, L.Xp - (S.enc.h - L.hAt)).toFixed(0)} hp` : '';
+    const cls = L.state==='HIGH'?'class="hi"':L.state==='WAIT'?'':'class="dim"';
+    return `<tr ${cls}><td>S${L.id}</td><td class="l">${L.sheets.length}${L.final?'':' …'}</td><td>${f1(L.Lin)}</td><td>${L.Lp??'—'}</td><td>${L.K??'—'}</td><td>${L.Xp?L.Xp.toFixed(0):'—'}</td><td class="l">${L.state}${L.late>2?' (late)':''}</td><td>${rem}</td></tr>`;
+  }).join('');
+  $('#encKv').innerHTML = `<span>Slow enc #1</span><span>${c} p</span><span>High enc</span><span>${Math.floor(S.enc.h)} p · ${(S.hRate*P.highRes/MM2IN).toFixed(0)} mm/s</span>`;
+
+  const cfg = timerCfg();
+  $('#inRoomHdr').textContent = `In room (${TLBL[cfg.start]} → ${TLBL[cfg.stop]})`;
+  $('#res tbody').innerHTML = S.loads.slice(-12).reverse().map(L => {
+    const d = loadData(L), dm = v => v==null ? '<span class="dim">…</span>' : v;
+    const simCov = d.covSim==null ? '<span class="dim">…</span>' : `<span class="${d.covSim>=99?'pass':d.covSim>=80?'warn':'fail'}">${d.covSim.toFixed(0)}%${d.covDone?'':'…'}</span>`;
+    return `<tr><td>L${L.id}</td><td class="l">${d.size}</td><td>${dm(f1(d.Lin))}</td><td>${dm(d.Gs)}</td><td>${dm(d.K)}</td>
+      <td class="bl">${d.upPred}${L.p.late?'<span class="warn">*</span>':''}</td><td class="hi">${dm(d.upSim)}</td><td>${d.upSim!=null?fmtRel(d.upSim/IN2MM - G.inlet):'<span class="dim">…</span>'}</td>
+      <td class="bl">${d.basePred}</td><td class="lo">${dm(d.baseSim)}</td><td>${d.baseSim!=null?fmtRel(d.baseSim/IN2MM - G.exit):'<span class="dim">…</span>'}</td>
+      <td class="bl">${d.covPred.toFixed(0)}%</td><td>${simCov}</td>
+      <td class="bl">${f2(d.hiPred)}</td><td class="hi">${d.hiSim==null?'<span class="dim">…</span>':f2(d.hiSim)}</td>
+      <td class="bl">${f2(d.roomPred)}</td><td>${d.roomSim==null?'<span class="dim">…</span>':f2(d.roomSim)}</td></tr>`;
+  }).join('');
+
+  document.querySelectorAll('.sbtn').forEach(b => { const k=b.dataset.k; b.classList.toggle('lit', !!S.sens[k]); b.classList.toggle('stuck', F.stuck.has(k)); b.classList.toggle('dis', !secOn(k.split('-')[1])); });
+  document.querySelectorAll('button.tog').forEach(b => b.classList.toggle('on', !!F[b.dataset.f]));
+  if (S.logDirty){
+    const only = $('#motOnly').checked;
+    const rows = S.log.filter(e => !only || e.src==='MOTION' || e.level==='HARD');
+    $('#log').innerHTML = rows.map(e => `<div class="${e.level}"><span>${e.t.toFixed(1)}s</span><span>${e.src}</span><span>${e.msg}</span></div>`).join('') || '<div class="INFO"><span></span><span></span><span>No events yet</span></div>';
+    S.logDirty = false;
+  }
+  syncRunBtn();
+}
+
+/* ---------------- layout editor ---------------- */
+const SENS_LBL = {entry:'Entry', inlet:'Inlet', exit:'Exit', wallIn:'Room wall in', wallOut:'Room wall out'};
+function buildLayoutEditor(){
+  const L = LAYOUT[room], pos = positions(L);
+  $('#layRoom').textContent = room==='top' ? 'Top' : 'Base';
+  const refBy = {}; for (const [k,sp] of Object.entries(L.sensors)) (refBy[sp.ref] ||= []).push(SENS_LBL[k]);
+  $('#lay tbody').innerHTML = L.rows.map((r,i) => {
+    const isBelt = r.type==='belt', single = !isBelt && Math.round(+r.qty||1) <= 1;
+    const opt = Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===r.type?'selected':''}>${t.label}</option>`).join('');
+    const num = (f, dis, val) => `<input type="number" step="any" data-i="${i}" data-k="${f}" value="${dis?'':(val ?? r[f] ?? '')}" ${dis?'disabled':''}>`;
+    const tag = refBy[r.id] ? `<div class="dim" style="font-size:10.5px;margin-top:2px" title="Sensor / wall reference">◆ ${refBy[r.id].join(' · ')}</div>` : '';
+    return `<tr><td><span class="sw" style="background:var(--${TYPES[r.type].col})"></span>${i+1}</td><td class="l"><select data-i="${i}" data-k="type">${opt}</select>${tag}</td>
+      <td>${num('qty',isBelt)}</td><td>${num('dia',isBelt)}</td><td>${num('pitch',isBelt||single)}</td><td>${num('len',!isBelt)}</td>
+      <td>${i===L.rows.length-1 ? '<span class="dim">— last row</span>' : `<span class="${i<L.rows.length-1 && pos[i+1][0] < pos[i][1] ? 'fail' : ''}">${num('next')}</span>`}</td><td>${Math.round(pos[i][0])}</td><td>${Math.round(pos[i][1])}</td>
+      <td class="l"><button class="sm" data-act="up" data-i="${i}" title="Move up">↑</button> <button class="sm" data-act="down" data-i="${i}" title="Move down">↓</button> <button class="sm" data-act="ins" data-i="${i}" title="Insert a copy after this row">＋</button> <button class="sm" data-act="del" data-i="${i}" title="Delete row">✕</button></td></tr>`;
+  }).join('');
+  const rowOpts = sel => L.rows.map((r,i)=>`<option value="${r.id}" ${r.id===sel?'selected':''}>#${i+1} ${TYPES[r.type].label}</option>`).join('');
+  $('#laySens tbody').innerHTML = Object.entries(L.sensors).map(([k,sp]) => {
+    const at = k==='entry' ? 0 : sensorAt(L, k, pos);
+    return `<tr><td class="l"><b>${SENS_LBL[k]}</b></td><td class="l"><select data-s="${k}" data-f="ref" style="width:200px">${rowOpts(sp.ref)}</select></td>
+      <td class="l"><select data-s="${k}" data-f="edge" style="width:170px"><option value="up" ${sp.edge==='up'?'selected':''}>upstream edge</option><option value="down" ${sp.edge==='down'?'selected':''}>downstream edge</option></select></td>
+      <td><input type="number" step="any" data-s="${k}" data-f="off" value="${sp.off}" style="width:90px"></td><td>${at==null?'—':Math.round(at)}</td></tr>`;
+  }).join('');
+  const pts = [['curtain','Curtain (blank = belt-gap centre)']];
+  $('#layPts').innerHTML = pts.map(([k,l]) => `<label class="f">${l} (mm from Entry)<input type="number" step="any" data-pt="${k}" value="${L[k]==null?'':L[k]}" placeholder="${k==='curtain'?mm(G.curtain)+' (auto)':''}"></label>`).join('');
+}
+function layoutChanged(){ saveLayout(); G = geom(); buildLayoutEditor(); }
+function defaultNext(r){ return r.type==='belt' ? 120 : ((+r.pitch||0) > 0 ? +r.pitch : (+r.dia||0) + 60); }
+$('#lay').addEventListener('change', e => {
+  const L = LAYOUT[room], t = e.target, i = t.dataset.i, k = t.dataset.k; if (i==null || !k) return;
+  const r = L.rows[+i], v = t.value==='' ? 0 : +t.value;
+  if (k==='type'){ r.type = t.value; if (r.type==='belt'){ r.len = r.len || 1000; } else { r.qty = r.qty || 1; r.dia = r.dia || 80; r.pitch = r.pitch ?? 0; } }
+  else r[k] = v;
+  layoutChanged();
+});
+$('#lay').addEventListener('click', e => {
+  const act = e.target.dataset?.act; if (!act) return;
+  const L = LAYOUT[room], i = +e.target.dataset.i, rows = L.rows, n = rows.length;
+  if (act==='ins'){ const c = JSON.parse(JSON.stringify(rows[i])); c.id = newId();
+    if (i < n-1) c.next = rows[i].next; else delete c.next;      // copy takes over the old link to the following row
+    rows[i].next = defaultNext(rows[i]); rows.splice(i+1, 0, c); }
+  else if (act==='del'){
+    if (n<=1) return;
+    const pos = positions(L), abs = {}; for (const k of Object.keys(L.sensors)) abs[k] = k==='entry' ? 0 : sensorAt(L, k, pos);
+    const gone = rows[i].id; rows.splice(i,1); if (rows.length) delete rows[rows.length-1].next;
+    const p2 = chainRaw(L);
+    for (const k of Object.keys(L.sensors)) if (L.sensors[k].ref===gone){   // re-tie sensor to a neighbour, keep its position
+      const shift = (()=>{ const e = edgeOf(L, p2, L.sensors.entry); return e==null ? 0 : e + (+L.sensors.entry.off||0); })();
+      L.sensors[k] = refFor(L, p2.map(([a,b])=>[a-shift,b-shift]), abs[k] ?? 0);
+    }
+  } else if (act==='up' || act==='down'){
+    const j = act==='up' ? i-1 : i+1; if (j<0 || j>=n) return;
+    [rows[i], rows[j]] = [rows[j], rows[i]]; [rows[i].next, rows[j].next] = [rows[j].next, rows[i].next];   // links stay with the slots
+    rows.forEach((r,k) => { if (k < rows.length-1 && r.next === undefined) r.next = defaultNext(r); }); delete rows[rows.length-1].next;
+  }
+  layoutChanged();
+});
+$('#laySens').addEventListener('change', e => { const k = e.target.dataset.s, f = e.target.dataset.f; if (!k) return;
+  LAYOUT[room].sensors[k][f] = f==='off' ? (+e.target.value||0) : e.target.value; layoutChanged(); });
+$('#layPts').addEventListener('change', e => { const k = e.target.dataset.pt; if (!k) return;
+  LAYOUT[room][k] = (k==='curtain' && e.target.value==='') ? null : +e.target.value; layoutChanged(); });
+$('#layAddDown').addEventListener('click', () => { const rows = LAYOUT[room].rows;
+  if (rows.length) rows[rows.length-1].next = defaultNext(rows[rows.length-1]); rows.push({id:newId(), type:'chain', qty:1, dia:63, pitch:254}); layoutChanged(); });
+$('#layAddUp').addEventListener('click', () => { const rows = LAYOUT[room].rows;
+  rows.unshift({id:newId(), type:'chain', qty:1, dia:63, pitch:254, next:254}); layoutChanged(); });
+function defNote(t){ $('#defNote').textContent = t; }
+$('#laySaveDef').addEventListener('click', () => {
+  try { localStorage.setItem(USER_DEF_KEY, JSON.stringify(LAYOUT)); DEFAULT_CHAIN = JSON.parse(JSON.stringify(LAYOUT));
+    defNote(`Saved both rooms as default · ${new Date().toLocaleTimeString()} (this browser). Use ⬇ to keep it inside the file.`); }
+  catch(e){ defNote('Could not save in this browser — use ⬇ Download instead.'); } });
+$('#layLoadDef').addEventListener('click', () => { const d = readUserDefault();
+  LAYOUT[room] = JSON.parse(JSON.stringify((d || FACTORY_CHAIN)[room])); layoutChanged(); defNote(d ? 'Room reset to your saved default.' : 'No saved default yet — drawing values loaded.'); });
+$('#layReset').addEventListener('click', () => { LAYOUT[room] = JSON.parse(JSON.stringify(FACTORY_CHAIN[room])); layoutChanged(); defNote('Room reset to drawing values.'); });
+$('#layDownload').addEventListener('click', () => {
+  const scripts = [...document.scripts].map(sc => sc.textContent);
+  const src = scripts.find(t => t.includes('@@BAKED_DEFAULT@@'));
+  if (!src){ defNote('Download failed (script not found).'); return; }
+  const baked = src.replace(/let BAKED_DEFAULT = [^\n]*?\/\*@@BAKED_DEFAULT@@\*\//, 'let BAKED_DEFAULT = ' + JSON.stringify(LAYOUT) + '; /*@@BAKED_DEFAULT@@*/');
+  const clone = document.documentElement.cloneNode(true);
+  clone.removeAttribute('data-theme');
+  for (const sc of clone.querySelectorAll('script')) if (sc.textContent.includes('@@BAKED_DEFAULT@@')) sc.textContent = baked;
+  for (const id of ['#lay tbody','#laySens tbody','#res tbody','#plc tbody','#log','#sensGrid','#params','#layPts','#preset']) { const el = clone.querySelector(id); if (el) el.innerHTML = ''; }
+  const html = '<!doctype html>\n' + clone.outerHTML;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], {type:'text/html'}));
+  a.download = 'flow-coater-simulator.html'; document.body.appendChild(a); a.click(); a.remove();
+  defNote('Downloaded — the new file opens with your layout as its default on any computer.'); });
+$('#layExport').addEventListener('click', () => { const t = $('#layJson'); t.style.display='block'; t.value = JSON.stringify(LAYOUT, null, 1); t.select(); });
+$('#layImport').addEventListener('click', () => { const t = $('#layJson');
+  if (t.style.display==='none' || !t.value.trim()){ t.style.display='block'; t.value=''; t.placeholder='Paste exported JSON here, then press Import JSON again'; return; }
+  try { const o = JSON.parse(t.value); if (!o.top || !o.base) throw new Error('needs "top" and "base"'); LAYOUT = normLayout(o); layoutChanged(); t.style.display='none'; }
+  catch(err){ t.value = 'Import failed: ' + err.message + '\n\n' + t.value; } });
+
+/* ---------------- params & misc ---------------- */
+function buildSensorGrid(){
+  let h = '<span></span>' + SEC.map(s=>`<span class="h" style="grid-column:span 2">${s}</span>`).join('');
+  for (const p of POS){ h += `<span>${p}</span>`; for (const sc of SEC) for (const ab of ['A','B']) h += `<button class="sbtn" data-k="${p}-${sc}-${ab}">${ab}</button>`; }
+  $('#sensGrid').innerHTML = h;
+  $('#sensGrid').addEventListener('click', e => { const k = e.target.dataset?.k; if (!k) return; F.stuck.has(k) ? F.stuck.delete(k) : F.stuck.add(k);
+    log('INFO','SIM', `${F.stuck.has(k)?'Fault':'Cleared'}: sensor ${k} stuck OFF`); });
+}
+function buildParams(){
+  $('#params').innerHTML = PARAM_UI.map(([k,l,o]) => k==='h' ? `<h4>${l}</h4>` : o
+    ? `<label class="f">${l}<select data-p="${k}">${o.map(([v,n])=>`<option value="${v}" ${P[k]===v?'selected':''}>${n}</option>`).join('')}</select></label>`
+    : `<label class="f">${l}<input type="number" step="any" data-p="${k}" value="${P[k]}"></label>`).join('');
+  $('#params').addEventListener('change', e => { const k = e.target.dataset.p; if (!k) return;
+    P[k] = e.target.tagName==='SELECT' ? e.target.value : +e.target.value; updateSECY(); G = geom(); $('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1); });
+}
+
+/* ---------------- wiring ---------------- */
+let running = true, simSpeed = 2;
+$('#preset').innerHTML = [...new Set(PRESETS.map(p=>p.grp))].map(g => `<optgroup label="${g}">` +
+  PRESETS.map((p,i)=> p.grp===g ? `<option value="${i}">${p.name}  [ON ${p.on.split('').join(',')}]</option>` : '').join('') + '</optgroup>').join('')
+  + '<option value="custom">Custom…</option>';
+const DEF = PRESETS.findIndex(p=>p.name==='S 84×72');
+$('#preset').value = String(DEF); presetToR(DEF); rToForm(); HMI = hmiFrom(R);
+$('#preset').addEventListener('change', e => { if (e.target.value!=='custom'){ const T={}; presetToR(+e.target.value, T); rToForm(T); } });
+['#rW','#rLen','#rNLen','#rAcross','#rAlign'].forEach(id => $(id).addEventListener('input', () => { $('#preset').value='custom'; }));
+$('#rN').addEventListener('input', e => { R.n = Math.max(0, Math.round(+e.target.value||0)); });   // load count applies directly
+$('#confirmBtn').addEventListener('click', () => {
+  if (sizeSig(formSize()) === sizeSig(R)) return;
+  const prev = HMI.name; rFromForm(); HMI = hmiFrom(R);
+  const job = Math.max(0, +$('#rJob').value || 0);
+  if (job > 0){
+    S.jobStart = S.t; S.jobUntil = S.t + job*60;
+    log('MOTION','HMI',`JOB CHANGE ${prev} → ${R.name}: no feeding for ${job} min (until sim ${fmtClock(S.jobUntil)})`);
+  } else log('INFO','HMI',`Size confirmed: ${R.name}`);
+});
+$('#rNote').addEventListener('click', e => { if (e.target.id==='jobSkip'){ S.jobUntil = S.t; } });
+function syncRunBtn(){ const b = $('#runBtn'); b.classList.toggle('running', running); b.classList.toggle('paused', !running);
+  b.querySelector('.ic').textContent = running ? '❚❚' : '▶'; b.querySelector('.tx').textContent = running ? 'Pause' : 'Run'; }
+function setRunning(v){ running = v; syncRunBtn(); }
+$('#runBtn').addEventListener('click', () => setRunning(!running));
+$('#csvBtn').addEventListener('click', downloadCSV);
+$('#stepBtn').addEventListener('click', () => { setRunning(false); for (let i=0;i<50;i++) step(0.01); });
+$('#resetBtn').addEventListener('click', () => { G = geom(); newState(); });
+$('#simSpeed').addEventListener('change', e => simSpeed = +e.target.value);
+function setRoom(r){ room = r;
+  document.querySelectorAll('#roomSeg button').forEach(b=>b.classList.toggle('sel', b.dataset.r===r));
+  $('#roomLbl').textContent = (r==='top'?'Top':'Base')+' paint room'; G = geom(); newState(); buildLayoutEditor(); paintLegend();
+  document.documentElement.style.setProperty('--roomc', PAINT[r]); }
+$('#roomSeg').addEventListener('click', e => { const r = e.target.dataset?.r; if (r) setRoom(r); });
+$('#estopBtn').addEventListener('click', () => { log('HARD','SAFETY','EMERGENCY STOP pressed');
+  if (S.SI.loads.some(L=>L.state==='HIGH')) requestFinishStop(); else stopNow(); });
+$('#ackBtn').addEventListener('click', () => { S.run = true; S.stopReq = null; S.roomV = G.vB;
+  S.latched = new Set([...S.latched].filter(k=>k.startsWith('soft'))); log('INFO','SAFETY','Line restarted'); });
+document.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { const f = b.dataset.f;
+  if (f==='break') breakGlass();
+  else if (f==='missing') { S.pendMissing = true; log('INFO','SIM','Next load will miss its right-most sheet'); }
+  else if (f==='overlap') { S.pendOverlap = true; log('INFO','SIM','Next load will overlap the previous one'); }
+  else { F[f] = !F[f]; log('INFO','SIM',`${F[f]?'Fault':'Cleared'}: ${b.textContent}`); } }));
+$('#mitsuOn').addEventListener('change', e => P.mitsu = e.target.checked);
+$('#ilk').addEventListener('change', e => P.interlock = e.target.checked);
+$('#motOnly').addEventListener('change', () => S.logDirty = true);
+$('#clrLog').addEventListener('click', () => { S.log = []; S.logDirty = true; });
+$('#themeBtn').addEventListener('click', () => { const r = document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark'; readColors(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readColors);
+document.addEventListener('keydown', e => { if (e.code==='Space' && !['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)){ e.preventDefault(); setRunning(!running); } });
+
+$('#roomLbl').textContent = 'Top paint room';
+G = geom(); newState(); buildSensorGrid(); buildParams(); buildLayoutEditor(); readColors(); paintLegend();
+let lastT = performance.now(), lastUI = 0;
+function frame(now){
+  const rdt = Math.min(0.1, (now-lastT)/1000); lastT = now;
+  if (running){ let t = rdt*simSpeed; while (t > 1e-6){ const d = Math.min(0.01, t); step(d); t -= d; } }
+  draw(); drawTrend();
+  if (now - lastUI > 200){ updateUI(); lastUI = now; }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.__sim = { PRESETS, coverage, lateral, step, get S(){return S}, P, R, predict, presetToR, newState, getLayout:()=>LAYOUT,
+  geom:()=>G=geom(), setRoom, setHMI:()=>{HMI=hmiFrom(R);} };
+</script>
+</body>
+</html>
