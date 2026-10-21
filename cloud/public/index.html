@@ -110,9 +110,14 @@ canvas{display:block;width:100%}
 .legend #lgBare{border:1px solid}
 #hover{font:12px var(--mono);padding:6px 12px;border-top:1px solid var(--line);min-height:29px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,select,label,summary{touch-action:manipulation;-webkit-user-select:none;user-select:none}   /* iPad: rapid taps must not become double-tap zoom */
 button{font:500 13px var(--sans);border:1px solid var(--line2);background:var(--panel2);color:var(--ink);border-radius:6px;padding:7px 11px;cursor:pointer}
 button:hover{border-color:var(--muted)}
 button.primary{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+/* Confirm button: pulses while a size change is waiting to be sent to the PLC */
+button.primary.ready{background:var(--high);border-color:var(--high);color:var(--panel);font-weight:700;animation:confirmPulse 1.2s ease-in-out infinite}
+@keyframes confirmPulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--high) 60%, transparent)}50%{box-shadow:0 0 0 7px transparent}}
+@media (prefers-reduced-motion: reduce){button.primary.ready{animation:none;box-shadow:0 0 0 3px color-mix(in srgb, var(--high) 45%, transparent)}}
 button.danger{background:var(--alarm-fill);border-color:var(--alarm-fill);color:#fff;font-weight:700;letter-spacing:.04em}
 button.danger:hover{border-color:var(--ink)}
 button.on{outline:2px solid var(--alarm);outline-offset:-2px;color:var(--alarm)}
@@ -125,7 +130,7 @@ select optgroup{background:var(--panel2);color:var(--muted);font-style:normal;fo
 select optgroup option{color:var(--ink)}
 textarea{min-height:110px;font-size:11.5px}
 label.f{display:grid;grid-template-rows:1fr auto;align-items:end;gap:3px;font-size:11.5px;color:var(--muted)}
-.grid3 select,.grid3 input[type=number]{height:32px}
+.grid3 select,.grid3 input[type=number]{height:26px;font-size:12px;padding:2px 6px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .seg{display:inline-flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden}
 .seg button{border:0;border-radius:0;background:transparent;padding:6px 12px}
@@ -137,6 +142,14 @@ td:first-child,th:first-child,td.l,th.l{text-align:left}
 td{font-family:var(--mono)}
 th.grp{text-align:center;border-left:1px solid var(--line)} td.bl,th.bl{border-left:1px solid var(--line)}
 .tw{overflow:auto;max-height:320px}
+.sensOn{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.sensOn .so{display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;column-gap:6px;row-gap:0;padding:3px 4px;border-radius:6px;border:1.5px dashed var(--faint);color:var(--faint);font-family:var(--mono)}
+.sensOn .so b{font-size:14px;line-height:1.2}
+.sensOn .so span{display:none}
+.sensOn .so i{font-style:normal;font-size:10px;font-weight:700;letter-spacing:.06em}
+.sensOn .so.on{border:1.5px solid var(--ok);background:color-mix(in srgb, var(--ok) 16%, transparent);color:var(--ok)}
+.sensOn .so.off{opacity:.7}
+.sensOn .so em{font-style:normal;font-size:9px;letter-spacing:.04em;color:var(--warn,#e0a030);margin-top:1px}
 .pass{color:var(--ok)} .fail{color:var(--alarm);font-weight:600} .warn{color:var(--soft)} .dim{color:var(--faint)}
 .hi{color:var(--high)} .lo{color:var(--base)}
 #log{max-height:300px;overflow:auto;font:12px/1.4 var(--mono)}
@@ -227,7 +240,12 @@ th .u{display:block;font:500 11px var(--mono);letter-spacing:0;text-transform:no
 /* predicted results for the HMI size, with the what-if delta against a pinned baseline */
 .kr-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font:600 12px var(--sans);color:var(--ink)}
 .kr-h .unc{margin-left:6px}
-.kr-h .kr-act{display:inline-flex;gap:6px}
+.kr-act{display:inline-flex;gap:6px;margin-top:6px}
+details.pred>summary.kr-h{cursor:pointer;list-style:none;justify-content:flex-start}
+details.pred>summary.kr-h::-webkit-details-marker{display:none}
+details.pred>summary.kr-h::before{content:"";flex:none;width:6px;height:6px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(-45deg);margin-right:2px;transition:transform .15s ease-out}
+details.pred[open]>summary.kr-h::before{transform:rotate(45deg)}
+@media (prefers-reduced-motion: reduce){details.pred>summary.kr-h::before{transition:none}}
 .kr-act[hidden],.uncb[hidden],.kr-f[hidden]{display:none}
 .kr{display:grid;grid-template-columns:minmax(0,max-content) max-content auto;justify-content:start;gap:3px 14px;margin-top:6px;font-size:11.5px;line-height:1.3;align-items:baseline}
 .kr .k{color:var(--ink)}
@@ -274,11 +292,17 @@ details.help b{color:var(--ink)}
 .stabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;padding:9px 14px 8px;font:600 13px var(--sans);color:var(--muted);margin-bottom:-1px}
 .stabs button:hover{color:var(--ink)}
 .stabs button.sel{color:var(--ink);border-bottom-color:var(--roomc)}
-.stabs .savebox{margin:0 0 6px auto;display:inline-flex;align-items:center;gap:10px}
-.stabs .savebox button{padding:6px 16px;margin:0;font:600 13px var(--sans);background:var(--ink);color:var(--panel);border:1px solid var(--ink);border-radius:6px}
-.stabs .savebox button:hover{color:var(--panel);opacity:.88}
+.savebox{margin-left:12px;display:inline-flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0}
+.savebox button{height:28px;padding:0 16px;margin:0;font:600 13px var(--sans);background:var(--ink);color:var(--panel);border:1px solid var(--ink);border-radius:6px}
+.savebox button:hover{color:var(--panel);opacity:.88}
+/* Save: greyed like an unchanged Confirm while nothing to save (still clickable, e.g. to push to the cloud); pulses blue like Confirm once there is */
+.savebox button.idle{opacity:.4}
+.savebox button.ready{background:var(--high);border-color:var(--high);color:var(--panel);font-weight:700;animation:confirmPulse 1.2s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.savebox button.ready{animation:none;box-shadow:0 0 0 3px color-mix(in srgb, var(--high) 45%, transparent)}}
 .dirty{font:600 12px var(--sans);color:var(--soft)}
 .dirty[hidden]{display:none}
+/* a value changed since the last Save — same yellow as "● Unsaved changes" */
+input.unsv,select.unsv{color:var(--soft);border-color:var(--soft)}
 /* toast — short confirmation under the header */
 #toast{position:fixed;left:50%;top:130px;z-index:50;transform:translate(-50%,-8px);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
   max-width:calc(100vw - 32px);padding:10px 16px;border-radius:8px;font:600 13px var(--sans);background:var(--ink);color:var(--panel);box-shadow:0 8px 28px rgba(0,0,0,.28);display:flex;gap:8px;align-items:center}
@@ -326,6 +350,13 @@ body.settings .pvcard{position:sticky;top:var(--pvTop,58px);z-index:15;box-shado
 #pvInfo .v{font:600 12.5px/1.4 var(--mono)}
 #pvInfo .v small{font:500 11px var(--mono);color:var(--muted)}
 .card>h2 .pvh{display:inline-flex;gap:12px;align-items:center}
+/* preview header stays on one line: long text is cut with "…" instead of wrapping (full text on hover) */
+.pvcard>h2{flex-wrap:nowrap;white-space:nowrap}
+.pvcard>h2 .pvt{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.pvcard>h2 .pvh{min-width:0;flex:0 1 auto}
+.pvcard>h2 .pvh>.r{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.pvcard>h2 #pvPreset,.pvcard>h2 .savebox{flex:none}
+.savebox button{display:inline-flex;align-items:center;white-space:nowrap}
 #pvPreset{height:26px;width:auto;min-width:180px;padding:2px 8px;text-transform:none;letter-spacing:0;font:500 12px var(--mono)}
 /* master table page */
 #master{display:none;padding:14px 20px 20px}
@@ -410,6 +441,7 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
     <div class="transport">
       <button id="runBtn" class="play running" title="Run / pause the simulation (Space)"><span class="ic"></span><span class="tx">Pause</span></button>
       <div class="tgroup">
+        <button id="backBtn" class="tbtn" title="Pause and go back 0.5 s (B)"><svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 5.5v13l-10-6.5z"/><rect x="4.5" y="5.5" width="3" height="13" rx="1"/></svg>Back 0.5 s</button>
         <button id="stepBtn" class="tbtn" title="Pause and advance 0.5 s (S)"><svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 5.5v13l10-6.5z"/><rect x="16.5" y="5.5" width="3" height="13" rx="1"/></svg>Step 0.5 s</button>
         <button id="resetBtn" class="tbtn" title="Clear the line and start again"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg>Restart</button>
         <label class="spd" title="Simulation speed ([ slower · ] faster)"><select id="simSpeed" aria-label="Simulation speed">
@@ -434,6 +466,7 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
   <dl>
     <dt><kbd>Space</kbd></dt><dd>Run / pause the simulation</dd>
     <dt><kbd>S</kbd></dt><dd>Pause and step 0.5 s (simulator page)</dd>
+    <dt><kbd>B</kbd></dt><dd>Pause and go back 0.5 s (simulator page)</dd>
     <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Simulation slower / faster (0.25× … 8×)</dd>
     <dt><kbd>Ctrl</kbd> + <kbd>S</kbd></dt><dd>Save layout (both rooms) and parameters in this browser</dd>
     <dt><kbd>Esc</kbd></dt><dd>Back to the simulator from Settings or Master table</dd>
@@ -490,8 +523,9 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
 
   <aside>
 
-    <div class="card"><h2>HMI size <span class="r" id="hmiNow">S 84×120 · sensors L C R</span></h2><div class="pad">
+    <div class="card"><h2>HMI size</h2><div class="pad">
       <label class="f">Size (production list)<select id="preset"></select></label>
+      <div class="sensOn" id="hmiSens" aria-live="polite"></div>
       <div class="grid3" style="margin-top:8px">
         <label class="f">Sheet W (in)<input type="number" id="rW" min="6" max="96" step="1"></label>
         <label class="f">Sheet L (in)<input type="number" id="rLen" step="0.5" min="6" max="200"></label>
@@ -503,12 +537,13 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
         <label class="f">Load gap (in)<input type="number" id="rGapY" step=".5" min="0"></label>
         <label class="f" title="Delay when the size changes: no new glass is fed for this long after Confirm">Job change (min)<input type="number" id="rJob" step="0.5" min="0" value="1"></label>
       </div>
-      <div class="kr-h"><span>Predicted for this size</span>
-        <span class="kr-act" hidden><button class="sm" id="blPin" title="Keep the current parameters and layout as the reference, then change things in Settings to see the difference">Pin as baseline</button><button class="sm" id="blClr" hidden>Clear</button></span></div>
-      <div class="kr nobl" id="kr"></div>
-      <div class="kr-f" id="krFoot" hidden></div>
-      <div class="note" id="rNote"></div>
       <div class="row" style="margin-top:10px"><button class="primary" id="confirmBtn" disabled="" title="Change the size first — a job change only happens when the size changes">Size unchanged</button></div>
+      <div class="note" id="rNote"></div>
+      <details class="pred"><summary class="kr-h"><span>Predicted for this size</span></summary>
+        <span class="kr-act" hidden><button class="sm" id="blPin" title="Keep the current parameters and layout as the reference, then change things in Settings to see the difference">Pin as baseline</button><button class="sm" id="blClr" hidden>Clear</button></span>
+        <div class="kr nobl" id="kr"></div>
+        <div class="kr-f" id="krFoot" hidden></div>
+      </details>
     </div></div>
 
     <div class="card"><h2>Siemens PLC — load queue</h2>
@@ -540,11 +575,13 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
   <div class="setbar">
     <h2>Settings</h2>
     <span class="note">Layout and parameters apply live to the simulator (it keeps running in the background). Room = the room selected at the top.</span>
-    <button class="primary" id="setBack" title="Back to the simulator (Esc)">← Back to simulator</button>
   </div>
 
   <div class="card pvcard">
-    <h2>Line preview — glass size on the layout <span class="pvh"><span class="r">mm from Entry · click the drawing to move the glass</span><select id="pvPreset" aria-label="Glass size shown in the preview"></select></span></h2>
+    <h2><span class="pvt" title="Line preview — glass size on the layout">Line preview — glass size on the layout</span> <span class="pvh"><span class="r" title="mm from Entry · click the drawing to move the glass">mm from Entry · click the drawing to move the glass</span><select id="pvPreset" aria-label="Glass size shown in the preview"></select><span class="savebox">
+      <span class="dirty" id="dirty" hidden="" title="Layout or parameters changed since the last save">● Unsaved changes</span>
+      <button class="primary idle" id="laySaveDef" title="Save the layout (both rooms) and all parameters as the default, in this browser and in the cloud · Ctrl+S"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px"><path d="M5 3.5h11.5L20 7v13.5H5z"/><path d="M8.5 3.5V9h7V3.5M8.5 20.5v-6h7v6"/></svg>Save</button>
+    </span></span></h2>
     <div class="pvgrid">
       <div class="pvmain">
         <canvas id="pv" role="img" aria-label="Line preview: the chosen glass size placed on the roller layout, with Entry, Inlet, Exit and the predicted speed-up and back-to-base points"></canvas>
@@ -560,10 +597,6 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
       <button data-tab="params" role="tab" id="tab-params" aria-controls="panel-params">Parameters<span class="cnt" id="parCnt"></span></button>
       <button data-tab="files" role="tab" id="tab-files" aria-controls="panel-files">Save &amp; files</button>
     </div>
-    <span class="savebox">
-      <span class="dirty" id="dirty" hidden="" title="Layout or parameters changed since the last save">● Unsaved changes</span>
-      <button class="primary" id="laySaveDef" title="Save the layout (both rooms) and all parameters as the default, in this browser and in the cloud · Ctrl+S"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px"><path d="M5 3.5h11.5L20 7v13.5H5z"/><path d="M8.5 3.5V9h7V3.5M8.5 20.5v-6h7v6"/></svg>Save</button>
-    </span>
   </div>
 
   <div class="card spanel" data-panel="rows" id="panel-rows" role="tabpanel" aria-labelledby="tab-rows" hidden="">
@@ -605,9 +638,9 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
     <h2>Save, reset &amp; share the layout</h2>
     <div class="pad">
       <div class="facts">
-        <div><button class="sm" id="layLoadDef">Reset to default</button><span>Undo all edits (both rooms and parameters) back to the last Save.</span></div>
+        <div><span class="row" style="gap:6px"><button class="sm" id="layLoadDef">Reset to default</button><button class="sm" id="layUndoReset" hidden="">Undo reset</button></span><span>Undo all edits (both rooms and parameters) back to the last Save. Asks first; the edits it throws away are kept — Undo reset brings them back.</span></div>
         <div><button class="sm" id="layDownload"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14"/></svg>Save as HTML</button><span>A copy of this simulator with your layout and parameters built in — opens the same on any computer.</span></div>
-        <div><span class="row" style="gap:6px"><button class="sm" id="layExport">Export JSON</button><button class="sm" id="layImport">Import JSON</button></span><span>Copy the layout and parameters as text, or paste one in and press Import again.</span></div>
+        <div><span class="row" style="gap:6px"><button class="sm" id="layExport">Export JSON</button><button class="sm" id="layImport">Import JSON</button></span><span>Copy everything as text — layout (both rooms), parameters, Mitsubishi / interlock switches and the HMI size — or paste one in and press Import again.</span></div>
       </div>
       <p class="note" id="defNote"></p>
       <textarea id="layJson" style="display:none;margin-top:8px" spellcheck="false"></textarea>
@@ -619,7 +652,6 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
   <div class="setbar">
     <h2>Master table</h2>
     <span class="note">Every production size, calculated from the current layout &amp; parameters · <b id="mtRoom">Top</b> paint room (switch at the top) · positions = glass front, mm from Entry · gaps from the HMI panel</span>
-    <button class="primary" id="mtBack" title="Back to the simulator (Esc)">← Back to simulator</button>
   </div>
   <div class="card">
     <h2><span>All sizes <span class="r" id="mtCount"></span></span>
@@ -823,7 +855,7 @@ const P = {
   tTopStart:'inletOff', tTopStop:'exitOn', tBaseStart:'inletOff', tBaseStop:'exitOn',
   mitsu:false, interlock:false,
   tolPulses:3, timerLimit:10.0, timerDebounce:0.3, laneTol:2,
-  rollerWidthMM:2650, pairGapMM:100, sensL:20, sensC:52, sensR:82, glassLeftMM:100, gapCross:2, maxGlassW:96, covMargin:1
+  rollerWidthMM:2650, pairGapMM:100, sensL:20, sensC:52, sensR:82, glassLeftMM:100, sensRef:'glass', gapCross:2, maxGlassW:96, covMargin:1
 };
 /* parameters saved with Save (only the Parameters-tab keys; same type as the factory value) */
 const PARAM_KEY = 'fcsim.params', FACTORY_P = {...P};
@@ -853,6 +885,7 @@ const PARAM_UI = [
   ['tolPulses','Length tolerance ± (slow p)'],['timerLimit','Speed-up limit Inlet→Exit (s)'],['timerDebounce','Timer edge OFF-delay (s)'],['laneTol','Lane mismatch allowance (in)'],
   ['h','Across the line'],
   ['rollerWidthMM','Roller width (mm)'],['glassLeftMM','Glass left edge from roller left edge (mm, ≈)'],
+  ['sensRef','Sensor positions typed in Sensors tab from',[['glass','Glass left edge (in)'],['roller','Roller left edge (mm)']]],
   ['sensL','Sensor L (right one of pair) from glass left edge (in)'],['sensC','Sensor C (right one of pair) from glass left edge (in)'],['sensR','Sensor R (right one of pair) from glass left edge (in)'],
   ['pairGapMM','Gap between the 2 sensors of a pair (mm)'],['gapCross','Gap between sheets across (in, ≤ fits 96 in)'],['maxGlassW','Max glass width (in)'],['covMargin','Sensor needs glass this far past beam (in) *']
 ];
@@ -864,7 +897,7 @@ const uncTag = k => UNCONF[k] ? `<b class="unc" title="Not confirmed on the line
 /* ---------------- recipe ---------------- */
 const R = {}; let HMI = {};
 /* lateral coordinate y (inch): 0 = roller centre line, negative = LEFT side (facing flow) */
-const SEC = ['LEFT','CENTER','RIGHT'], SECY = {}, POS = ['ENTRY','INLET','EXIT'];
+const SEC = ['LEFT','CENTER','RIGHT'], SECY = {}, POS = ['ENTRY','INLET','EXIT'], SENS_K = ['sensL','sensC','sensR'];
 const RWin = () => P.rollerWidthMM*MM2IN, HW = () => RWin()/2;
 const glassRef = () => P.glassLeftMM*MM2IN - HW();     // y of the glass left loading reference
 const sensY = (sc, ab) => ab==='B' ? SECY[sc] : SECY[sc] - P.pairGapMM*MM2IN;   // B = right sensor at the stated distance
@@ -985,7 +1018,21 @@ function newState(){
     SI:{prev:false, open:null, loads:[], id:1, cmd:'BASE'}
   };
   for (const s of SEC) S.M.fifo[s] = [];
+  SNAPS = [];
 }
+/* Step back: a snapshot of S every 0.5 s of sim time (last ~10 min); going back restores the newest one at or before the
+   target and replays to it. The simulation is deterministic, so the replay lands on the same state. */
+let SNAPS = [];
+function snap(){ const l = SNAPS[SNAPS.length-1];
+  if (l && S.t - l.t < 0.5 - 1e-9) return;
+  SNAPS.push(structuredClone(S)); if (SNAPS.length > 1200) SNAPS.shift(); }
+function stepBack(sec){
+  const target = Math.max(0, S.t - sec);
+  while (SNAPS.length > 1 && SNAPS[SNAPS.length-1].t > target + 1e-9) SNAPS.pop();
+  const base = SNAPS[SNAPS.length-1]; if (!base) return;
+  S = structuredClone(base);
+  let t = target - S.t; while (t > 1e-6){ const d = Math.min(0.01, t); step(d); t -= d; }
+  S.logDirty = true; }
 function log(level, src, msg, key){
   if (key){ if (S.latched.has(key)) return false; S.latched.add(key); }
   S.log.unshift({t:S.t, level, src, msg}); if (S.log.length>300) S.log.pop(); S.logDirty = true; return true;
@@ -1040,6 +1087,7 @@ function breakGlass(){
 
 /* ---------------- simulation step ---------------- */
 function step(dt){
+  snap();
   const g = G; S.t += dt;
   if (S.run){
     let target = S.cmd==='HIGH' ? g.vH : g.vB;
@@ -1643,14 +1691,11 @@ function renderKR(T, p){
   const sg = v => v > 0 ? '+' + v : v < 0 ? '−' + Math.abs(v) : '±0';
   const dl = (now, then, unit='') => !b ? '' : `<span class="d${Math.round(now)!==Math.round(then)?' ch':''}">Δ ${sg(Math.round(now - then))}${unit}</span>`;
   const row = (k, hint, v, unit, cls, d) => `<span class="k">${k}<i>${hint}</i></span><span class="v ${cls}">${v}<small>${unit}</small></span>${b ? d || '<span class="d"></span>' : ''}`;
-  const covCls = p.cov >= 99.5 ? 'pass' : p.cov >= 80 ? 'warn' : 'fail';
   const html =
     row('▲ Switch to high speed', 'glass front, measured from Entry sensor', `${mm(p.accel)}${p.late?'<span class="warn" title="PLC knows L only when the tail clears Entry">*</span>':''}`, 'mm', 'hi', b && dl(mm(p.accel), mm(b.p.accel))) +
     row('▼ Back to base speed', 'glass front, measured from Entry sensor', mm(p.decel), 'mm', 'lo', b && dl(mm(p.decel), mm(b.p.decel))) +
     row('↳ Distance to Exit sensor', '− = before Exit · + = past Exit', fmtRel(p.decel - G.exit).replace(' mm',''), 'mm', '', b && dl(mm(p.decel - G.exit), mm(b.p.decel - b.ex))) +
-    row('Distance run at high speed (X)', 'from ▲ to ▼', mm(p.Xin), 'mm', '', b && dl(mm(p.Xin), mm(b.p.Xin))) +
-    row('Glass coated at high speed', '% of the glass under the curtain · aim 100', p.cov.toFixed(0), '%', covCls, b && dl(p.cov, b.p.cov, '%')) +
-    row('Room before “Charge Too Long”', `slow pulses to spare · limit ${P.chargeLong} p`, m, 'p', m < 0 ? 'fail' : m < 40 ? 'warn' : '', b && dl(m, b.m));
+    row('Distance run at high speed (X)', 'from ▲ to ▼', mm(p.Xin), 'mm', '', b && dl(mm(p.Xin), mm(b.p.Xin)));
   $('#kr').classList.toggle('nobl', !b);
   setHTML($('#kr'), html);
   const n = paramDiff().length;
@@ -1689,26 +1734,24 @@ function updateUI(){
   $('#cSim').textContent = running ? 'RUNNING' : 'PAUSED'; $('#cSim').className = 'v ' + (running ? 'ok' : 'base');
   $('#cTime').textContent = S.t.toFixed(1)+' s';
   { const same = sizeSig(formSize()) === sizeSig(R), b = $('#confirmBtn');
-    b.disabled = same; b.textContent = same ? 'Size unchanged' : 'Confirm (send to PLC)';
+    b.disabled = same; b.classList.toggle('ready', !same); b.textContent = same ? 'Size unchanged' : 'Confirm (send to PLC)';
     b.title = same ? 'Change the size first — a job change only happens when the size changes' : `Job change to the new size (${$('#rJob').value||0} min)`; }
   { const on = S.jobUntil && S.t < S.jobUntil;
     $('#jobChip').classList.toggle('active', !!on);
     $('#cJob').textContent = on ? `${fmtClock(S.jobUntil - S.t)} left` : '—'; $('#cJob').className = 'v ' + (on ? 'base' : 'muted');
     if (on) $('#jobBar').style.width = (100*(S.t - S.jobStart)/(S.jobUntil - S.jobStart)).toFixed(1) + '%';
     $('#jobChip').title = on ? `Job change → ${R.name}, started at sim ${fmtClock(S.jobStart)}` : 'No job change running'; }
-  $('#hmiNow').textContent = `${HMI.name} · sensors ${SEC.filter(secOn).map(x=>x[0]).join(' ')}`;
+  { /* L/C/R for the size in the form (what the job change will give); "was" shows when it differs from the running size */
+    const pv = $('#preset').value, fs = formSize();
+    const nextOn = (pv!=='custom' && PRESETS[+pv] && PRESETS[+pv].on) || coverage(fs);
+    $('#hmiSens').innerHTML = SEC.map((sc,i) => { const on = nextOn.includes(String(i+1)), was = secOn(sc), chg = on!==was;
+      return `<div class="so ${on?'on':'off'}" title="${sc}"><b>${sc[0]}</b><span>${sc}</span><i>${on?'ON':'OFF'}</i>${chg?`<em>was ${was?'ON':'OFF'}</em>`:''}</div>`; }).join(''); }
 
   { const pv = $('#preset').value, T = {nAcross:+$('#rAcross').value||1, w:+$('#rW').value||0, align:$('#rAlign').value,
       len:+$('#rLen').value||0, nLen:+$('#rNLen').value||1, gapX:+$('#rGapX').value||0};
-    const exp = pv!=='custom' ? PRESETS[+pv].on : '', got = coverage(T), lab = c => c.split('').map(d=>['L','C','R'][d-1]).join(' ') || '—';
     const p = predict(T);
-    const on = exp ? lab(exp) : lab(got);
     renderKR(T, p);
-    const rn = `Sensors ON: <b class="mono">${on}</b>` + (exp ? ([...exp].every(d=>got.includes(d))
-          ? ` <span class="pass">✓ glass covers them all</span>`
-          : ` <span class="fail">✗ glass does not cover ${lab([...exp].filter(d=>!got.includes(d)).join(''))}</span>`) : '') +
-      (lNet(T)/P.slowRes > P.chargeLong ? ' <span class="fail">&gt; Charge Too Long</span>' : '') +
-      (S.jobUntil && S.t < S.jobUntil ? `<br><b class="warn">Job change → ${R.name}: next load in ${fmtClock(S.jobUntil - S.t)}</b> <button class="sm" id="jobSkip">skip</button>` : '');
+    const rn = S.jobUntil && S.t < S.jobUntil ? `<b class="warn">Job change → ${R.name}: next load in ${fmtClock(S.jobUntil - S.t)}</b> <button class="sm" id="jobSkip">skip</button>` : '';
     setHTML($('#rNote'), rn); }
   updateFault();
 
@@ -1777,8 +1820,17 @@ function buildLayoutEditor(){
       <td><input type="number" step="any" data-s="${k}" data-f="off" value="${sp.off}" style="width:90px"></td><td>${at==null?'—':Math.round(at)}</td></tr>`;
   }).join('');
   $('#layPts').innerHTML = `<div class="f">Curtain (mm from Entry)<div class="mono" style="margin-top:4px">${mm(G.curtain)} · centre of the belt gap (automatic)</div></div>`;
-  const wid = [['sensL','1 LEFT pair — from glass left edge (in)'],['sensC','2 CENTER pair — from glass left edge (in)'],['sensR','3 RIGHT pair — from glass left edge (in)'],['pairGapMM','Gap between the 2 sensors of a pair (mm)']];
-  $('#layWidth').innerHTML = wid.map(([k,l]) => `<label class="f">${l}<input type="number" step="any" data-pp="${k}" value="${P[k]}"></label>`).join('');
+  // sensor pairs are stored as inch from the glass left edge; "roller" shows / takes them as mm from the roller left edge
+  const fromRoller = P.sensRef==='roller', ref = fromRoller ? 'from roller left edge (mm)' : 'from glass left edge (in)';
+  const sv = k => fromRoller ? +(P.glassLeftMM + P[k]*IN2MM).toFixed(1) : P[k];
+  const inp = k => `<input type="number" step="any" data-pp="${k}" value="${SENS_K.includes(k) ? sv(k) : P[k]}">`;
+  $('#layWidth').innerHTML =
+    `<label class="f">Roller left edge → glass left edge (mm)${inp('glassLeftMM')}</label>`
+    + `<label class="f">Sensor distance measured from<select data-pp="sensRef"><option value="glass" ${fromRoller?'':'selected'}>Glass left edge (in)</option><option value="roller" ${fromRoller?'selected':''}>Roller left edge (mm)</option></select></label>`
+    + [['sensL','1 LEFT pair'],['sensC','2 CENTER pair'],['sensR','3 RIGHT pair']].map(([k,l]) => `<label class="f">${l} — ${ref}${inp(k)}</label>`).join('')
+    + `<label class="f">Gap between the 2 sensors of a pair (mm)${inp('pairGapMM')}</label>`
+    + `<div class="f" style="grid-column:1/-1">Right sensor of each pair: ${SENS_K.map((k,i) => `<span class="mono">${SEC[i][0]} ${f1(P[k])} in from glass = ${Math.round(P.glassLeftMM + P[k]*IN2MM)} mm from roller</span>`).join(' · ')} · glass left edge ${Math.round(P.glassLeftMM)} mm from roller left edge</div>`;
+  markUnsaved();
 }
 function layoutChanged(){ saveLayout(); G = geom(); buildLayoutEditor(); setDirty(true); }
 let toastT = 0;
@@ -1788,7 +1840,21 @@ function toast(msg, kind=''){
   void t.offsetWidth; t.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600);
 }
-const setDirty = d => { $('#dirty').hidden = !d; };
+const setDirty = d => { $('#dirty').hidden = !d; $('#laySaveDef').classList.toggle('ready', d); $('#laySaveDef').classList.toggle('idle', !d); };
+/* yellow = differs from the last Save (rows matched by id; by position if the ids don't line up) */
+let SAVED_P = null;
+function markSaved(){ SAVED_P = paramsObj(); markUnsaved(); }
+function markUnsaved(){
+  const L = LAYOUT[room], B = DEFAULT_CHAIN[room] || {rows:[], sensors:{}}, ne = (a, b) => String(a ?? '') !== String(b ?? '');
+  const byId = Object.fromEntries(B.rows.map(r => [r.id, r])), useId = L.rows.some(r => byId[r.id]);
+  document.querySelectorAll('#lay [data-i][data-k]').forEach(el => { const i = +el.dataset.i, r = L.rows[i], b = useId ? byId[r.id] : B.rows[i];
+    el.classList.toggle('unsv', !b || ne(r[el.dataset.k], b[el.dataset.k])); });
+  document.querySelectorAll('#laySens [data-s]').forEach(el => { const b = B.sensors[el.dataset.s], f = el.dataset.f;
+    el.classList.toggle('unsv', !b || ne(L.sensors[el.dataset.s][f], b[f])); });
+  if (!SAVED_P) return;
+  document.querySelectorAll('#params [data-p], #layWidth [data-pp]').forEach(el => { const k = el.dataset.p || el.dataset.pp;
+    el.classList.toggle('unsv', k in SAVED_P && ne(P[k], SAVED_P[k])); });
+}
 function defaultNext(r){ return r.type==='belt' ? 120 : ((+r.pitch||0) > 0 ? +r.pitch : (+r.dia||0) + 60); }
 /* allowed range per layout field (mm, qty in pcs); "next" may go negative — the overlap shows red */
 const LAY_LIM = { qty:[1,200,1], dia:[1,1000], pitch:[0,5000], len:[1,50000], next:[-50000,50000] };
@@ -1829,7 +1895,10 @@ $('#lay').addEventListener('click', e => {
 $('#laySens').addEventListener('change', e => { const k = e.target.dataset.s, f = e.target.dataset.f; if (!k) return;
   LAYOUT[room].sensors[k][f] = f==='off' ? (+e.target.value||0) : e.target.value; layoutChanged(); });
 $('#layWidth').addEventListener('change', e => { const k = e.target.dataset.pp; if (!k) return;
-  if (setParam(k, e.target.value)){ const el = $(`#params [data-p="${k}"]`); if (el) el.value = P[k]; } e.target.value = P[k]; });
+  if (k==='sensRef'){ P.sensRef = e.target.value; const el = $('#params [data-p="sensRef"]'); if (el) el.value = P.sensRef; paramsChanged(); return; }
+  let raw = e.target.value;
+  if (SENS_K.includes(k) && P.sensRef==='roller' && String(raw).trim()!=='' && isFinite(+raw)) raw = (+raw - P.glassLeftMM)*MM2IN;   // mm from roller → in from glass
+  if (setParam(k, raw)){ const el = $(`#params [data-p="${k}"]`); if (el) el.value = P[k]; } else buildLayoutEditor(); });
 $('#layAddDown').addEventListener('click', () => { const rows = LAYOUT[room].rows;
   if (rows.length) rows[rows.length-1].next = defaultNext(rows[rows.length-1]); rows.push({id:newId(), type:'chain', qty:1, dia:63, pitch:254}); layoutChanged(); });
 $('#layAddUp').addEventListener('click', () => { const rows = LAYOUT[room].rows;
@@ -1847,7 +1916,7 @@ const paramsObj = () => { const par = {}; for (const [k] of PARAM_UI) if (k!=='h
 function saveAll(){
   try {
     localStorage.setItem(USER_DEF_KEY, JSON.stringify(LAYOUT)); localStorage.setItem(PARAM_KEY, JSON.stringify(paramsObj())); localStorage.setItem('fcsim.savedAt', String(Date.now()));
-    DEFAULT_CHAIN = JSON.parse(JSON.stringify(LAYOUT)); setDirty(false);
+    DEFAULT_CHAIN = JSON.parse(JSON.stringify(LAYOUT)); setDirty(false); markSaved();
     $('#defNote').textContent = `Saved layout (both rooms) + parameters · ${new Date().toLocaleTimeString()} (this browser). Use Save as HTML to keep them inside the file.`;
     toast('Saved: layout (both rooms) and parameters', 'ok');
     if (window.cloudSave) window.cloudSave();
@@ -1855,12 +1924,28 @@ function saveAll(){
 }
 $('#laySaveDef').addEventListener('click', saveAll);
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); saveAll(); } });
-$('#layLoadDef').addEventListener('click', () => { const d = readUserDefault();
+/* Reset keeps what it throws away, so one wrong click can be undone */
+const UNDO_KEY = 'fcsim.beforeReset';
+const undoBtn = () => { let has = false; try { has = !!localStorage.getItem(UNDO_KEY); } catch(e) {} $('#layUndoReset').hidden = !has; };
+$('#layUndoReset').addEventListener('click', () => {
+  let o = null; try { o = JSON.parse(localStorage.getItem(UNDO_KEY) || 'null'); } catch(e) {}
+  if (!o || !o.layout) { undoBtn(); return; }
+  LAYOUT = normLayout(o.layout); applyParams(o.params);
+  document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; });
+  layoutChanged(); paramsChanged();
+  defNote('Reset undone: your edits are back (not saved yet — press Save to keep them).', 'ok');
+});
+undoBtn();
+$('#layLoadDef').addEventListener('click', () => {
+  if (!$('#dirty').hidden && !confirm('Throw away all unsaved edits (both rooms + parameters) and go back to the last Save?\n\nYou can bring them back with "Undo reset".')) return;
+  try { localStorage.setItem(UNDO_KEY, JSON.stringify({ layout: LAYOUT, params: paramsObj(), at: Date.now() })); } catch(e) {}
+  undoBtn();
+  const d = readUserDefault();
   LAYOUT = normLayout(JSON.parse(JSON.stringify(d || FACTORY_CHAIN)));
   for (const [k] of PARAM_UI) if (k!=='h') P[k] = FACTORY_P[k];
   try { applyParams(JSON.parse(localStorage.getItem(PARAM_KEY) || 'null')); } catch(e) {}
   document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; });
-  layoutChanged(); paramsChanged(); setDirty(false);
+  layoutChanged(); paramsChanged(); setDirty(false); markSaved();
   defNote(d ? 'Reset to the saved default (both rooms + parameters).' : 'No saved default yet — drawing and factory values loaded.'); });
 $('#layDownload').addEventListener('click', () => {
   const scripts = [...document.scripts].map(sc => sc.textContent);
@@ -1880,12 +1965,26 @@ $('#layDownload').addEventListener('click', () => {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], {type:'text/html'}));
   a.download = 'flow-coater-simulator.html'; document.body.appendChild(a); a.click(); a.remove();
   defNote('Downloaded — the new file opens with your layout and parameters as its default on any computer.'); });
-$('#layExport').addEventListener('click', () => { const t = $('#layJson'); t.style.display='block'; t.value = JSON.stringify({...LAYOUT, params:paramsObj()}, null, 1); t.select(); });
+/* HMI size panel: the form as typed (preset, size, loads, gaps, job change) + the size the line is running (confirmed) */
+const hmiObj = () => ({ preset:$('#preset').value, ...formSize(), n:Math.max(0,Math.round(+$('#rN').value||0)), job:+$('#rJob').value||0,
+  running:{ name:R.name, w:R.w, len:R.len, n:R.n, nAcross:R.nAcross, nLen:R.nLen, align:R.align, gapX:R.gapX, gapY:R.gapY, on:R.on } });
+function applyHmi(h){
+  if (!h) return;
+  if (h.running){ Object.assign(R, h.running); HMI = hmiFrom(R); }   // the running size comes back without a job change
+  const ok = h.preset!=='custom' && PRESETS[+h.preset];
+  $('#preset').value = ok ? String(h.preset) : 'custom';
+  rToForm({ w:h.w, len:h.len, n:h.n ?? R.n, nAcross:h.nAcross, nLen:h.nLen, align:h.align, gapX:h.gapX, gapY:h.gapY });
+  if (h.job != null) $('#rJob').value = h.job;
+}
+$('#layExport').addEventListener('click', () => { const t = $('#layJson'); t.style.display='block';
+  t.value = JSON.stringify({...LAYOUT, params:paramsObj(), toggles:{ mitsu:!!P.mitsu, interlock:!!P.interlock }, hmi:hmiObj()}, null, 1); t.select(); });
 $('#layImport').addEventListener('click', () => { const t = $('#layJson');
   if (t.style.display==='none' || !t.value.trim()){ t.style.display='block'; t.value=''; t.placeholder='Paste exported JSON here, then press Import JSON again'; return; }
   try { const o = JSON.parse(t.value); if (!o.top || !o.base) throw new Error('needs "top" and "base"'); LAYOUT = normLayout(o);
     if (o.params){ applyParams(o.params); document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; }); paramsChanged(); }
-    layoutChanged(); t.style.display='none'; }
+    if (o.toggles){ P.mitsu = !!o.toggles.mitsu; P.interlock = !!o.toggles.interlock; $('#mitsuOn').checked = P.mitsu; $('#ilk').checked = P.interlock; }
+    applyHmi(o.hmi);
+    layoutChanged(); t.style.display='none'; toast('Imported: layout, parameters' + (o.hmi ? ', HMI size' : ''), 'ok'); }
   catch(err){ t.value = 'Import failed: ' + err.message + '\n\n' + t.value; } });
 
 /* ---------------- params & misc ---------------- */
@@ -1935,6 +2034,7 @@ function markParams(){
   const diff = new Set(paramDiff());
   document.querySelectorAll('#params [data-p]').forEach(el => el.closest('.prow').classList.toggle('chg', diff.has(el.dataset.p)));
   $('#parCnt').textContent = diff.size ? ` · ${diff.size} changed` : '';
+  markUnsaved();
 }
 function paramsChanged(){ updateSECY(); G = geom(); if (typeof buildLayoutEditor==='function' && $('#layWidth')) buildLayoutEditor(); $('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1); markParams(); setDirty(true); }
 
@@ -1969,15 +2069,18 @@ let pvInit = false;
 /* pages: 'sim' (default), 'settings', 'master' — one body class each */
 const pageIs = p => document.body.classList.contains(p);
 function setPage(p){
-  for (const k of ['settings','master']) document.body.classList.toggle(k, p===k);
+  for (const [k, id, name] of [['settings','#setBtn','Settings'],['master','#mtBtn','Master table']]){
+    const on = p===k, b = $(id);
+    document.body.classList.toggle(k, on);
+    b.querySelector('span').textContent = on ? '← Back to simulator' : name;
+    b.setAttribute('aria-label', on ? 'Back to simulator' : name);
+  }
   window.scrollTo(0, 0); pvPin();
   if (p==='settings' && !pvInit){ pvInit = true; pvFromHmi(); pvSetPos(mm(predict(pvSize()).accel)); }
   if (p==='master'){ MT_SIG = ''; buildMaster(); }
 }
 $('#setBtn').addEventListener('click', () => setPage(pageIs('settings') ? 'sim' : 'settings'));
-$('#setBack').addEventListener('click', () => setPage('sim'));
 $('#mtBtn').addEventListener('click', () => setPage(pageIs('master') ? 'sim' : 'master'));
-$('#mtBack').addEventListener('click', () => setPage('sim'));
 
 /* settings tabs — the open tab is remembered per browser */
 function setTab(t){
@@ -2191,6 +2294,7 @@ $('#blPin').addEventListener('click', () => { BL[room] = { P:{...P}, L:JSON.pars
 $('#blClr').addEventListener('click', () => { BL[room] = null; });
 $('#krFoot').addEventListener('click', e => { if (e.target.dataset.go){ setPage('settings'); setTab(e.target.dataset.go); } });
 $('#stepBtn').addEventListener('click', () => { setRunning(false); for (let i=0;i<50;i++) step(0.01); });
+$('#backBtn').addEventListener('click', () => { setRunning(false); stepBack(0.5); });
 $('#resetBtn').addEventListener('click', () => { G = geom(); newState(); });
 $('#simSpeed').addEventListener('change', e => simSpeed = +e.target.value);
 function setRoom(r){ room = r;
@@ -2236,6 +2340,7 @@ document.addEventListener('keydown', e => {
   if (e.code==='Space'){ e.preventDefault(); if (!e.repeat) setRunning(!running); spaceTaken = true; return; }
   if (pageIs('settings') || pageIs('master')) return;
   if (e.key==='s' || e.key==='S'){ e.preventDefault(); $('#stepBtn').click(); }
+  else if (e.key==='b' || e.key==='B'){ e.preventDefault(); $('#backBtn').click(); }
   else if (e.key==='[' || e.key===']'){ const sel = $('#simSpeed'), i = clamp(sel.selectedIndex + (e.key===']' ? 1 : -1), 0, sel.options.length-1);
     if (i !== sel.selectedIndex){ sel.selectedIndex = i; simSpeed = +sel.value; toast(`Simulation speed ${sel.options[i].text}`); } }
 });
@@ -2249,7 +2354,7 @@ $('#keysOk').addEventListener('click', () => $('#keys').close());
 $('#keys').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // click on the backdrop
 $('#keysHide').addEventListener('change', e => { try { localStorage.setItem('fcsim.keysHide', e.target.checked ? '1' : '0'); } catch(err) {} });
 
-buildSensorGrid(); buildParams(); readColors(); setRoom('top'); initDefNote();   // setRoom also resets the room switch and accent colour
+buildSensorGrid(); buildParams(); readColors(); setRoom('top'); initDefNote(); markSaved(); setDirty(!!document.querySelector('.unsv'));   // setRoom also resets the room switch and accent colour
 $('#hover').className = 'dim'; $('#hover').textContent = 'Move the mouse over the drawing to read positions';
 try { if (localStorage.getItem('fcsim.keysHide')!=='1') showKeys(); } catch(e) { showKeys(); }
 $('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1);
@@ -2310,7 +2415,7 @@ requestAnimationFrame(frame);
           if (o.params){ applyParams(o.params); document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; }); }
           DEFAULT_CHAIN = JSON.parse(JSON.stringify(LAYOUT));
           try { localStorage.setItem(USER_DEF_KEY, JSON.stringify(LAYOUT)); localStorage.setItem(PARAM_KEY, JSON.stringify(paramsObj())); localStorage.setItem('fcsim.savedAt', String(o.updatedAt || Date.now())); } catch(e) {}
-          G = geom(); buildLayoutEditor(); markParams(); setDirty(false);
+          G = geom(); buildLayoutEditor(); markParams(); setDirty(false); markSaved();
           say('Loaded from cloud' + (o.updatedAt ? ' · ' + new Date(o.updatedAt).toLocaleString() : '') + (locked ? ' · default is LOCKED (Save keeps changes in this browser only)' : ''));
         } else say('Cloud is empty: press Save to store your layout and parameters there as the default.');
         ready = true;
