@@ -83,7 +83,7 @@ button.icon svg{width:17px;height:17px;display:block}
 .chip:first-child{padding-left:0;border-left:0}
 .chip .k{font:600 11px/1 var(--sans);letter-spacing:.06em;color:var(--faint);text-transform:uppercase}
 .chip .v{font:600 14px/1.3 var(--mono);margin-top:4px;white-space:nowrap}
-#cSim::before,#cLine::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:7px;vertical-align:1px}
+#cSim::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:7px;vertical-align:1px}
 @media (max-width:700px){.bar,.strip{padding-left:16px;padding-right:16px} .sub,h1 span{display:none} .brand{flex-basis:100%} .chip{padding:1px 12px} .tools .icon span{display:none}}
 .v.high{color:var(--high)} .v.base{color:var(--base)} .v.alarm{color:var(--alarm)} .v.ok{color:var(--ok)}
 main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;padding:14px 20px 20px}
@@ -188,21 +188,22 @@ details.wide .body{padding:0 12px 12px}
 .roomsel button.sel{background:color-mix(in srgb, var(--rc) 24%, var(--panel));color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.25), inset 0 0 0 2px var(--rc)}
 .roomsel button.sel i{opacity:1;width:10px;height:10px;box-shadow:0 0 0 3px color-mix(in srgb, var(--rc) 35%, transparent)}
 .transport{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.play{min-width:112px;height:36px;font:700 14px var(--sans);display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:0 16px;border-radius:9px;border:1px solid}
+.play{min-width:96px;height:30px;font:700 13px var(--sans);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;border-radius:8px;border:1px solid}
 .play .ic svg{width:13px;height:13px;display:block}
-.play.running{background:var(--panel2);border-color:var(--line2);color:var(--ink)}
-.play.running:hover{border-color:var(--muted)}
+.play.running{background:color-mix(in srgb, var(--high) 14%, var(--panel2));border-color:color-mix(in srgb, var(--high) 45%, var(--line2));color:var(--ink)}
+.play.running:hover{border-color:var(--high)}
 .play.paused{background:var(--ok);border-color:var(--ok);color:var(--on-ok);animation:pulse 1.6s ease-in-out infinite}
-.estop{height:36px;padding:0 16px;border-radius:9px;display:inline-flex;align-items:center;gap:7px}
-.estop svg{width:15px;height:15px}
+.estop{height:30px;padding:0 11px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;font-size:12px}
+.estop svg{width:13px;height:13px}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 45%, transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb, var(--ok) 0%, transparent)}}
 @media (prefers-reduced-motion: reduce){.play.paused{animation:none}}
-.tgroup{display:inline-flex;height:36px;border:1px solid var(--line2);border-radius:9px;overflow:hidden;background:var(--panel2)}
+.tgroup{display:inline-flex;height:30px;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--panel2)}
 .tgroup>*{border:0;border-radius:0;border-left:1px solid var(--line2);background:transparent;height:100%}
 .tgroup>*:first-child{border-left:0}
-.tbtn{font:600 12.5px var(--sans);padding:0 12px;color:var(--ink);display:inline-flex;align-items:center;gap:6px}
+.tbtn{font:600 12px var(--sans);padding:0 9px;color:var(--ink);display:inline-flex;align-items:center;gap:5px}
+.tbtn svg.ico{width:13px;height:13px}
 .tbtn:hover{background:var(--panel)}
-.spd{display:inline-flex;align-items:center;gap:2px;font:600 12px var(--sans);color:var(--muted);padding:0 2px 0 12px}
+.spd{display:inline-flex;align-items:center;gap:2px;font:600 12px var(--sans);color:var(--muted);padding:0 2px 0 4px}
 .spd select{width:auto;height:100%;border:0;background:transparent;font-weight:600;padding:0 6px}
 .v.muted{color:var(--muted)}
 .jbar{height:3px;background:var(--line);border-radius:2px;margin-top:4px;overflow:hidden;visibility:hidden}
@@ -303,7 +304,7 @@ kbd{display:inline-block;min-width:22px;text-align:center;font:600 11.5px/1.5 va
 /* settings page */
 #settings{display:none;padding:14px 20px 20px}
 body.settings #settings{display:block}
-body.settings main, body.settings #logicDet, body.settings header .strip{display:none}
+body.settings main, body.settings #logicDet, body.settings header .strip, body.master header .strip{display:none}
 @media (max-width:600px){#settings{padding:12px 16px}}
 .setbar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:10px}
 .setbar h2{margin:0;font-size:16px;font-weight:700}
@@ -402,9 +403,7 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
   <div class="strip">
     <div class="chips">
       <div class="chip"><div class="k">Simulation</div><div class="v ok" id="cSim">RUNNING</div></div>
-      <div class="chip"><div class="k">Line</div><div class="v ok" id="cLine">MOVING</div></div>
       <div class="chip"><div class="k">Room speed</div><div class="v base" id="cSpeed">105 mm/s</div></div>
-      <div class="chip"><div class="k">Command</div><div class="v base" id="cCmd">BASE</div></div>
       <div class="chip"><div class="k">Sim time</div><div class="v" id="cTime">24.8 s</div></div>
       <div class="chip" id="jobChip" title="No job change running"><div class="k">Job change</div><div class="v muted" id="cJob">—</div><div class="jbar"><i id="jobBar"></i></div></div>
     </div>
@@ -413,7 +412,7 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
       <div class="tgroup">
         <button id="stepBtn" class="tbtn" title="Pause and advance 0.5 s (S)"><svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 5.5v13l10-6.5z"/><rect x="16.5" y="5.5" width="3" height="13" rx="1"/></svg>Step 0.5 s</button>
         <button id="resetBtn" class="tbtn" title="Clear the line and start again"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg>Restart</button>
-        <label class="spd" title="Simulation speed ([ slower · ] faster)">Speed<select id="simSpeed">
+        <label class="spd" title="Simulation speed ([ slower · ] faster)"><select id="simSpeed" aria-label="Simulation speed">
           <option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1">1×</option>
           <option value="2" selected="">2×</option><option value="4">4×</option><option value="8">8×</option>
         </select></label>
@@ -1687,9 +1686,7 @@ function updateFault(){
 function updateUI(){
   const hi = S.roomV > (G.vB+G.vH)/2;
   $('#cSpeed').textContent = `${(S.roomV/MM2IN).toFixed(0)} mm/s`; $('#cSpeed').className = 'v ' + (!S.run?'alarm':hi?'high':'base');
-  $('#cCmd').textContent = S.cmd; $('#cCmd').className = 'v ' + (S.cmd==='HIGH'?'high':'base');
   $('#cSim').textContent = running ? 'RUNNING' : 'PAUSED'; $('#cSim').className = 'v ' + (running ? 'ok' : 'base');
-  $('#cLine').textContent = !S.run ? 'STOPPED' : S.stopReq ? 'STOPPING' : running ? 'MOVING' : 'FROZEN'; $('#cLine').className = 'v ' + (!S.run||S.stopReq ? 'alarm' : running ? 'ok' : 'muted');
   $('#cTime').textContent = S.t.toFixed(1)+' s';
   { const same = sizeSig(formSize()) === sizeSig(R), b = $('#confirmBtn');
     b.disabled = same; b.textContent = same ? 'Size unchanged' : 'Confirm (send to PLC)';
