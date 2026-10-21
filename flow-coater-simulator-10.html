@@ -563,7 +563,7 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
     </div>
     <span class="savebox">
       <span class="dirty" id="dirty" hidden="" title="Layout or parameters changed since the last save">● Unsaved changes</span>
-      <button class="primary" id="laySaveDef" title="Save the layout (both rooms) and all parameters as your default in this browser · Ctrl+S"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px"><path d="M5 3.5h11.5L20 7v13.5H5z"/><path d="M8.5 3.5V9h7V3.5M8.5 20.5v-6h7v6"/></svg>Save</button>
+      <button class="primary" id="laySaveDef" title="Save the layout (both rooms) and all parameters as the default, in this browser and in the cloud · Ctrl+S"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px"><path d="M5 3.5h11.5L20 7v13.5H5z"/><path d="M8.5 3.5V9h7V3.5M8.5 20.5v-6h7v6"/></svg>Save</button>
     </span>
   </div>
 
@@ -1855,6 +1855,7 @@ function saveAll(){
     DEFAULT_CHAIN = JSON.parse(JSON.stringify(LAYOUT)); setDirty(false);
     $('#defNote').textContent = `Saved layout (both rooms) + parameters · ${new Date().toLocaleTimeString()} (this browser). Use Download HTML to keep them inside the file.`;
     toast('Saved: layout (both rooms) and parameters', 'ok');
+    if (window.cloudSave) window.cloudSave();
   } catch(e){ defNote('Could not save in this browser. Use Download HTML instead.', 'err'); }
 }
 $('#laySaveDef').addEventListener('click', saveAll);
@@ -2272,48 +2273,56 @@ function frame(now){
 }
 requestAnimationFrame(frame);
 /* ---------------- cloud auto-save (Cloudflare Worker + D1) ----------------
-   Layout (both rooms: rollers, positions, sensors) + parameters are saved to /api/state ~1 s after any change,
-   and loaded from there at start. Opened as a local file (no Worker) it quietly does nothing. */
+   The cloud holds the shared default (layout of both rooms + parameters). It is loaded at start and only
+   overwritten when Save / Ctrl+S is pressed (saveAll → cloudSave). Opened as a local file (no Worker) it quietly does nothing. */
 (function cloudSync(){
   if (!/^https?:$/.test(location.protocol)) return;
   const KEY_LS = 'fcsim.editKey';
-  let ready = false, timer = 0, inflight = false, again = false;
+  let ready = false;
   const key = () => { try { return localStorage.getItem(KEY_LS) || ''; } catch(e) { return ''; } };
   const say = (t, kind) => { try { $('#defNote').textContent = t; if (kind) toast(t, kind); } catch(e) {} };
-  async function push(){
-    if (inflight){ again = true; return; }
-    inflight = true;
+  let saving = false, locked = false;
+  window.cloudSave = async function(){
+    if (!ready){ say('Saved in this browser only: the cloud is not reachable.', 'err'); return; }
+    if (locked){ say('Saved in this browser only: the cloud default is LOCKED.', 'err'); return; }
+    if (saving) return;
+    saving = true;
     try {
-      const r = await fetch('/api/state', { method:'PUT', headers:{ 'content-type':'application/json', 'x-edit-key': key() },
-        body: JSON.stringify({ layout: LAYOUT, params: paramsObj() }) });
-      if (r.status === 401){
-        const k = prompt('Cloud edit key (needed to save changes to the cloud):');
-        if (k){ try { localStorage.setItem(KEY_LS, k); } catch(e) {} again = true; } else say('Cloud save off: no edit key entered.', 'err');
-      } else if (!r.ok) throw new Error('HTTP ' + r.status);
-      else { setDirty(false); say('Auto-saved to cloud · ' + new Date().toLocaleTimeString()); }
-    } catch(e){ say('Cloud save failed (' + e.message + '). Will retry on the next change.', 'err'); }
-    inflight = false; if (again){ again = false; push(); }
-  }
-  const queue = () => { if (!ready) return; clearTimeout(timer); timer = setTimeout(push, 800); };
-  const _lc = layoutChanged, _pc = paramsChanged;
-  layoutChanged = function(){ _lc.apply(this, arguments); queue(); };
-  paramsChanged = function(){ _pc.apply(this, arguments); queue(); };
+      for (let tries = 0; tries < 2; tries++){
+        const r = await fetch('/api/state', { method:'PUT', headers:{ 'content-type':'application/json', 'x-edit-key': key() },
+          body: JSON.stringify({ layout: LAYOUT, params: paramsObj() }) });
+        if (r.status === 403){ locked = true; say('Saved in this browser only: the cloud default is LOCKED.', 'err'); setDirty(true); break; }
+        if (r.status === 401){
+          const k = prompt('Cloud edit key (needed to save the default to the cloud):');
+          if (!k){ say('Saved in this browser only: no cloud edit key entered.', 'err'); setDirty(true); break; }
+          try { localStorage.setItem(KEY_LS, k); } catch(e) {}
+          continue;
+        }
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        say('Saved to this browser + cloud default · ' + new Date().toLocaleTimeString(), 'ok');
+        break;
+      }
+    } catch(e){ say('Saved in this browser, but cloud save failed (' + e.message + ').', 'err'); setDirty(true); }
+    saving = false;
+  };
   (async function load(){
     try {
       const r = await fetch('/api/state', { cache:'no-store' });
       if (r.ok){
         const o = await r.json();
+        locked = !!(o && o.locked);
         if (o && o.layout && o.layout.top && o.layout.base){
           LAYOUT = normLayout(o.layout); saveLayout();
           if (o.params){ applyParams(o.params); document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; }); }
+          DEFAULT_CHAIN = JSON.parse(JSON.stringify(LAYOUT));
+          try { localStorage.setItem(USER_DEF_KEY, JSON.stringify(LAYOUT)); localStorage.setItem(PARAM_KEY, JSON.stringify(paramsObj())); localStorage.setItem('fcsim.savedAt', String(o.updatedAt || Date.now())); } catch(e) {}
           G = geom(); buildLayoutEditor(); markParams(); setDirty(false);
-          say('Loaded from cloud' + (o.updatedAt ? ' · ' + new Date(o.updatedAt).toLocaleString() : ''));
-        } else say('Cloud is empty: your first change will be saved there.');
+          say('Loaded from cloud' + (o.updatedAt ? ' · ' + new Date(o.updatedAt).toLocaleString() : '') + (locked ? ' · default is LOCKED (Save keeps changes in this browser only)' : ''));
+        } else say('Cloud is empty: press Save to store your layout and parameters there as the default.');
         ready = true;
       } else say('Cloud load failed (HTTP ' + r.status + ').', 'err');
     } catch(e){ say('Cloud not reachable: working locally.'); }
   })();
-  window.addEventListener('beforeunload', () => { if (timer && ready){ clearTimeout(timer); push(); } });
 })();
 window.__sim = { PRESETS, coverage, lateral, step, get S(){return S}, P, R, predict, presetToR, newState, getLayout:()=>LAYOUT,
   geom:()=>G=geom(), setRoom, setHMI:()=>{HMI=hmiFrom(R);} };
