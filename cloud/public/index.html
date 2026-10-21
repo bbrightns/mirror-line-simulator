@@ -323,6 +323,15 @@ kbd{display:inline-block;min-width:22px;text-align:center;font:600 11.5px/1.5 va
 .facts{display:grid;gap:8px}
 .facts>div{display:grid;grid-template-columns:260px minmax(0,1fr);gap:12px;align-items:center;font-size:12.5px;color:var(--muted)}
 .facts>div>button,.facts>div>.row{justify-self:start}
+/* cloud saves: the last few Saves, newest first — Load brings one back as unsaved edits */
+.chist{margin-top:16px}
+.chist h3{margin:0 0 6px;font:600 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.chist ol{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:6px;max-width:560px}
+.chist li{display:flex;align-items:center;gap:12px;padding:6px 10px;border-top:1px solid var(--line);font:500 12.5px var(--mono)}
+.chist li:first-child{border-top:0}
+.chist li .t{flex:1}
+.chist li .cur{font:600 10.5px var(--sans);color:var(--high);text-transform:uppercase;letter-spacing:.05em}
+.chist .empty{padding:8px 10px;color:var(--muted);font-size:12.5px}
 @media (max-width:600px){.facts>div{grid-template-columns:minmax(0,1fr)}}
 .ptgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-top:10px}
 /* settings page */
@@ -641,6 +650,11 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
         <div><span class="row" style="gap:6px"><button class="sm" id="layLoadDef">Reset to default</button><button class="sm" id="layUndoReset" hidden="">Undo reset</button></span><span>Undo all edits (both rooms and parameters) back to the last Save. Asks first; the edits it throws away are kept — Undo reset brings them back.</span></div>
         <div><button class="sm" id="layDownload"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14"/></svg>Save as HTML</button><span>A copy of this simulator with your layout and parameters built in — opens the same on any computer.</span></div>
         <div><span class="row" style="gap:6px"><button class="sm" id="layExport">Export JSON</button><button class="sm" id="layImport">Import JSON</button></span><span>Copy everything as text — layout (both rooms), parameters, Mitsubishi / interlock switches and the HMI size — or paste one in and press Import again.</span></div>
+      </div>
+      <div class="chist" id="cloudHist" hidden="">
+        <h3>Cloud saves · last 5 <button class="sm" id="histRefresh" title="Reload the list">↻</button></h3>
+        <ol id="histList"></ol>
+        <p class="note" style="margin-top:6px">Load = bring that save back into the editor as unsaved edits (yellow). Press Save to make it the default again; Undo reset goes back to what you had.</p>
       </div>
       <p class="note" id="defNote"></p>
       <textarea id="layJson" style="display:none;margin-top:8px" spellcheck="false"></textarea>
@@ -1961,7 +1975,7 @@ $('#layDownload').addEventListener('click', () => {
   for (const sc of clone.querySelectorAll('script')) if (sc.textContent.includes('@@BAKED_DEFAULT@@')) sc.textContent = baked;
   clone.querySelector('body').classList.remove('settings', 'master');   // the new file opens on the simulator
   const ct = clone.querySelector('#toast'); if (ct){ ct.className = ''; ct.removeAttribute('style'); ct.textContent = ''; }   // don't bake a visible toast into the file
-  for (const id of ['#lay tbody','#laySens tbody','#res tbody','#plc tbody','#log','#sensGrid','#params','#layPts','#preset','#pvPreset','#pvInfo','#mt thead','#mt tbody','#mtIns','#mtView']) { const el = clone.querySelector(id); if (el) el.innerHTML = ''; }
+  for (const id of ['#lay tbody','#laySens tbody','#res tbody','#plc tbody','#log','#sensGrid','#params','#layPts','#preset','#pvPreset','#pvInfo','#mt thead','#mt tbody','#mtIns','#mtView','#histList']) { const el = clone.querySelector(id); if (el) el.innerHTML = ''; }
   const html = '<!doctype html>\n' + clone.outerHTML;
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], {type:'text/html'}));
   a.download = 'flow-coater-simulator.html'; document.body.appendChild(a); a.click(); a.remove();
@@ -2400,6 +2414,7 @@ requestAnimationFrame(frame);
         }
         if (!r.ok) throw new Error('HTTP ' + r.status);
         say('Saved to this browser + cloud default · ' + new Date().toLocaleTimeString(), 'ok');
+        loadHist();
         break;
       }
     } catch(e){ say('Saved in this browser, but cloud save failed (' + e.message + ').', 'err'); setDirty(true); }
@@ -2419,10 +2434,41 @@ requestAnimationFrame(frame);
           G = geom(); buildLayoutEditor(); markParams(); setDirty(false); markSaved();
           say('Loaded from cloud' + (o.updatedAt ? ' · ' + new Date(o.updatedAt).toLocaleString() : '') + (locked ? ' · default is LOCKED (Save keeps changes in this browser only)' : ''));
         } else say('Cloud is empty: press Save to store your layout and parameters there as the default.');
-        ready = true;
+        ready = true; loadHist();
       } else say('Cloud load failed (HTTP ' + r.status + ').', 'err');
     } catch(e){ say('Cloud not reachable: working locally.'); }
   })();
+  /* cloud saves list: the current default + the saves it replaced (the Worker keeps them in sim_history) */
+  const HIST_N = 5, when = t => new Date(t).toLocaleString();
+  async function loadHist(){
+    try {
+      const [cur, past] = await Promise.all([fetch('/api/state', { cache:'no-store' }).then(r => r.json()),
+                                             fetch('/api/history', { cache:'no-store' }).then(r => r.ok ? r.json() : [])]);
+      const items = [...(cur && cur.updatedAt ? [{ id:'', at:cur.updatedAt }] : []),
+                     ...(Array.isArray(past) ? past : []).map(h => ({ id:h.id, at:h.updated_at }))].slice(0, HIST_N);
+      $('#histList').innerHTML = items.length ? items.map((h, i) =>
+        `<li><span class="t">${when(h.at)}</span>${i===0 && h.id==='' ? '<span class="cur">current default</span>' : ''}<button class="sm" data-hist="${h.id}" data-at="${h.at}">Load</button></li>`).join('')
+        : '<li class="empty">No cloud saves yet — press Save.</li>';
+      $('#cloudHist').hidden = false;
+    } catch(e){}
+  }
+  $('#histRefresh').addEventListener('click', loadHist);
+  $('#histList').addEventListener('click', async e => {
+    const b = e.target.closest('[data-hist]'); if (!b) return;
+    const at = when(+b.dataset.at);
+    if (!confirm(`Load the cloud save from ${at}?` + ($('#dirty').hidden ? '' : '\n\nYour unsaved edits are replaced.') + '\n\nYou can go back with "Undo reset".')) return;
+    try {
+      const id = b.dataset.hist, r = await fetch(id ? '/api/history?id=' + encodeURIComponent(id) : '/api/state', { cache:'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const o = await r.json(); if (!o.layout || !o.layout.top || !o.layout.base) throw new Error('no layout in that save');
+      try { localStorage.setItem(UNDO_KEY, JSON.stringify({ layout: LAYOUT, params: paramsObj(), at: Date.now() })); } catch(e) {}
+      undoBtn();
+      LAYOUT = normLayout(o.layout); applyParams(o.params);
+      document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; });
+      layoutChanged(); paramsChanged();
+      say(`Loaded the cloud save from ${at} — not the default until you press Save.`, 'ok');
+    } catch(err){ say('Could not load that save (' + err.message + ').', 'err'); }
+  });
 })();
 window.__sim = { PRESETS, coverage, lateral, step, get S(){return S}, P, R, predict, presetToR, newState, getLayout:()=>LAYOUT,
   geom:()=>G=geom(), setRoom, setHMI:()=>{HMI=hmiFrom(R);} };
