@@ -648,8 +648,7 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
     <div class="pad">
       <div class="facts">
         <div><span class="row" style="gap:6px"><button class="sm" id="layLoadDef">Reset to default</button><button class="sm" id="layUndoReset" hidden="">Undo reset</button></span><span>Undo all edits (both rooms and parameters) back to the last Save. Asks first; the edits it throws away are kept — Undo reset brings them back.</span></div>
-        <div><button class="sm" id="layDownload"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14"/></svg>Save as HTML</button><span>A copy of this simulator with your layout and parameters built in — opens the same on any computer.</span></div>
-        <div><span class="row" style="gap:6px"><button class="sm" id="layExport">Export JSON</button><button class="sm" id="layImport">Import JSON</button></span><span>Copy everything as text — layout (both rooms), parameters, Mitsubishi / interlock switches and the HMI size — or paste one in and press Import again.</span></div>
+        <div><span class="row" style="gap:6px"><button class="sm" id="layExport"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14"/></svg>Export JSON</button><button class="sm" id="layImport">Import JSON</button><input type="file" id="layFile" accept=".json,application/json" hidden=""></span><span>Download everything as a .json file — layout (both rooms), parameters, Mitsubishi / interlock switches and the HMI size — or pick one to load it back (as unsaved edits; Undo reset goes back).</span></div>
       </div>
       <div class="chist" id="cloudHist" hidden="">
         <h3>Cloud saves · last 5 <button class="sm" id="histRefresh" title="Reload the list">↻</button></h3>
@@ -657,7 +656,6 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
         <p class="note" style="margin-top:6px">Load = bring that save back into the editor as unsaved edits (yellow). Press Save to make it the default again; Undo reset goes back to what you had.</p>
       </div>
       <p class="note" id="defNote"></p>
-      <textarea id="layJson" style="display:none;margin-top:8px" spellcheck="false"></textarea>
     </div>
   </div>
 </div>
@@ -1923,7 +1921,7 @@ function initDefNote(){
   let saved = null, at = null;
   try { saved = localStorage.getItem(USER_DEF_KEY); at = localStorage.getItem('fcsim.savedAt'); } catch(e) {}
   $('#defNote').textContent = saved
-    ? `Saved layout (both rooms) + parameters${at ? ' · ' + new Date(+at).toLocaleString() : ''} (this browser). Use Save as HTML to keep them inside the file.`
+    ? `Saved layout (both rooms) + parameters${at ? ' · ' + new Date(+at).toLocaleString() : ''} (this browser). Export JSON keeps a copy as a file.`
     : 'Nothing saved in this browser yet: the layout and parameters built into this file are used. Press Save to keep your changes here.';
 }
 const paramsObj = () => { const par = {}; for (const [k] of PARAM_UI) if (k!=='h') par[k] = P[k]; return par; };
@@ -1931,10 +1929,10 @@ function saveAll(){
   try {
     localStorage.setItem(USER_DEF_KEY, JSON.stringify(LAYOUT)); localStorage.setItem(PARAM_KEY, JSON.stringify(paramsObj())); localStorage.setItem('fcsim.savedAt', String(Date.now()));
     DEFAULT_CHAIN = JSON.parse(JSON.stringify(LAYOUT)); setDirty(false); markSaved();
-    $('#defNote').textContent = `Saved layout (both rooms) + parameters · ${new Date().toLocaleTimeString()} (this browser). Use Save as HTML to keep them inside the file.`;
+    $('#defNote').textContent = `Saved layout (both rooms) + parameters · ${new Date().toLocaleTimeString()} (this browser). Export JSON keeps a copy as a file.`;
     toast('Saved: layout (both rooms) and parameters', 'ok');
     if (window.cloudSave) window.cloudSave();
-  } catch(e){ defNote('Could not save in this browser. Use Save as HTML instead.', 'err'); }
+  } catch(e){ defNote('Could not save in this browser. Use Export JSON instead.', 'err'); }
 }
 $('#laySaveDef').addEventListener('click', saveAll);
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); saveAll(); } });
@@ -1962,24 +1960,6 @@ $('#layLoadDef').addEventListener('click', () => {
   document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; });
   layoutChanged(); paramsChanged(); setDirty(false); markSaved();
   defNote(d ? 'Reset to the saved default (both rooms + parameters).' : 'No saved default yet — drawing and factory values loaded.'); });
-$('#layDownload').addEventListener('click', () => {
-  const scripts = [...document.scripts].map(sc => sc.textContent);
-  const src = scripts.find(t => t.includes('@@BAKED_DEFAULT@@'));
-  if (!src){ defNote('Download failed (script not found).'); return; }
-  const baked = src.replace(/let BAKED_DEFAULT = [^\n]*?\/\*@@BAKED_DEFAULT@@\*\//, () => 'let BAKED_DEFAULT = ' + JSON.stringify(LAYOUT) + '; /*@@BAKED_DEFAULT@@*/')
-                   .replace(/let BAKED_PARAMS = [^\n]*?\/\*@@BAKED_PARAMS@@\*\//, () => 'let BAKED_PARAMS = ' + JSON.stringify(paramsObj()) + '; /*@@BAKED_PARAMS@@*/');
-  const clone = document.documentElement.cloneNode(true);
-  clone.removeAttribute('data-theme'); clone.removeAttribute('style');   // no room colour / pin offset from this session
-  clone.querySelector('#keys')?.removeAttribute('open');
-  for (const id of ['#hover','#defNote']){ const el = clone.querySelector(id); if (el) el.textContent = ''; }
-  for (const sc of clone.querySelectorAll('script')) if (sc.textContent.includes('@@BAKED_DEFAULT@@')) sc.textContent = baked;
-  clone.querySelector('body').classList.remove('settings', 'master');   // the new file opens on the simulator
-  const ct = clone.querySelector('#toast'); if (ct){ ct.className = ''; ct.removeAttribute('style'); ct.textContent = ''; }   // don't bake a visible toast into the file
-  for (const id of ['#lay tbody','#laySens tbody','#res tbody','#plc tbody','#log','#sensGrid','#params','#layPts','#preset','#pvPreset','#pvInfo','#mt thead','#mt tbody','#mtIns','#mtView','#histList']) { const el = clone.querySelector(id); if (el) el.innerHTML = ''; }
-  const html = '<!doctype html>\n' + clone.outerHTML;
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], {type:'text/html'}));
-  a.download = 'flow-coater-simulator.html'; document.body.appendChild(a); a.click(); a.remove();
-  defNote('Downloaded — the new file opens with your layout and parameters as its default on any computer.'); });
 /* HMI size panel: the form as typed (preset, size, loads, gaps, job change) + the size the line is running (confirmed) */
 const hmiObj = () => ({ preset:$('#preset').value, ...formSize(), n:Math.max(0,Math.round(+$('#rN').value||0)), job:+$('#rJob').value||0,
   running:{ name:R.name, w:R.w, len:R.len, n:R.n, nAcross:R.nAcross, nLen:R.nLen, align:R.align, gapX:R.gapX, gapY:R.gapY, on:R.on } });
@@ -1991,16 +1971,26 @@ function applyHmi(h){
   rToForm({ w:h.w, len:h.len, n:h.n ?? R.n, nAcross:h.nAcross, nLen:h.nLen, align:h.align, gapX:h.gapX, gapY:h.gapY });
   if (h.job != null) $('#rJob').value = h.job;
 }
-$('#layExport').addEventListener('click', () => { const t = $('#layJson'); t.style.display='block';
-  t.value = JSON.stringify({...LAYOUT, params:paramsObj(), toggles:{ mitsu:!!P.mitsu, interlock:!!P.interlock }, hmi:hmiObj()}, null, 1); t.select(); });
-$('#layImport').addEventListener('click', () => { const t = $('#layJson');
-  if (t.style.display==='none' || !t.value.trim()){ t.style.display='block'; t.value=''; t.placeholder='Paste exported JSON here, then press Import JSON again'; return; }
-  try { const o = JSON.parse(t.value); if (!o.top || !o.base) throw new Error('needs "top" and "base"'); LAYOUT = normLayout(o);
+/* Export JSON = download a file named with the date & time; Import JSON = pick such a file */
+$('#layExport').addEventListener('click', () => {
+  const json = JSON.stringify({...LAYOUT, params:paramsObj(), toggles:{ mitsu:!!P.mitsu, interlock:!!P.interlock }, hmi:hmiObj()}, null, 1);
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json], {type:'application/json'}));
+  a.download = `mirror-sim_${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  defNote('Exported: ' + a.download, 'ok'); });
+$('#layImport').addEventListener('click', () => { $('#layFile').value = ''; $('#layFile').click(); });
+$('#layFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { const o = JSON.parse(await f.text()); if (!o.top || !o.base) throw new Error('needs "top" and "base"');
+    try { localStorage.setItem(UNDO_KEY, JSON.stringify({ layout: LAYOUT, params: paramsObj(), at: Date.now() })); } catch(e) {}
+    undoBtn();
+    LAYOUT = normLayout(o);
     if (o.params){ applyParams(o.params); document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; }); paramsChanged(); }
     if (o.toggles){ P.mitsu = !!o.toggles.mitsu; P.interlock = !!o.toggles.interlock; $('#mitsuOn').checked = P.mitsu; $('#ilk').checked = P.interlock; }
     applyHmi(o.hmi);
-    layoutChanged(); t.style.display='none'; toast('Imported: layout, parameters' + (o.hmi ? ', HMI size' : ''), 'ok'); }
-  catch(err){ t.value = 'Import failed: ' + err.message + '\n\n' + t.value; } });
+    layoutChanged(); defNote(`Imported ${f.name}: layout, parameters` + (o.hmi ? ', HMI size' : '') + ' — not the default until you press Save.', 'ok'); }
+  catch(err){ defNote(`Import failed (${f.name}): ${err.message}`, 'err'); } });
 
 /* ---------------- params & misc ---------------- */
 function buildSensorGrid(){
