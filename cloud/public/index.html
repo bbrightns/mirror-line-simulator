@@ -84,12 +84,28 @@ button.icon svg{width:17px;height:17px;display:block}
 .chip .k{font:600 11px/1 var(--sans);letter-spacing:.06em;color:var(--faint);text-transform:uppercase}
 .chip .v{font:600 14px/1.3 var(--mono);margin-top:4px;white-space:nowrap}
 #cSim::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:7px;vertical-align:1px}
-@media (max-width:700px){.bar,.strip{padding-left:16px;padding-right:16px} .sub,h1 span{display:none} .brand{flex-basis:100%} .chip{padding:1px 12px} .tools .icon span{display:none}}
+.brand h1,.brand .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:1000px){.brand{flex-basis:100%}}
+@media (max-width:700px){.bar,.strip{padding-left:16px;padding-right:16px} .sub,h1 span{display:none} .chip{padding:1px 12px} .tools .icon span{display:none}}
 .v.high{color:var(--high)} .v.base{color:var(--base)} .v.alarm{color:var(--alarm)} .v.ok{color:var(--ok)}
-main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;padding:14px 20px 20px}
-@media (max-width:1100px){main{grid-template-columns:minmax(0,1fr)}}
+/* simulator layout
+   wide:   plan / trend / per-load table on the left · HMI column sticks under the header and scrolls on its own
+   medium: one grid, HMI size next to the PLC queue right under the plan view (not below the long table)
+   narrow: one column, same order */
+main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;padding:14px 20px 20px;align-items:start}
+@media (min-width:1500px){main{grid-template-columns:minmax(0,1fr) 400px}}
 main>section,main>aside{min-width:0}
-@media (max-width:600px){main{padding:12px 16px}}
+main>aside{position:sticky;top:calc(var(--pvTop,120px) + 14px);max-height:calc(100vh - var(--pvTop,120px) - 28px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;border-radius:8px}
+main>aside>.card:last-child{margin-bottom:0}
+#resCard{scroll-margin-top:calc(var(--pvTop,120px) + 14px)}
+@media (max-width:1100px){
+  main{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"plan plan" "hmi plc" "trend trend" "res res" "log log" "safety safety";align-items:stretch}
+  main>section,main>aside{display:contents}
+  main .card{margin-bottom:0}
+  .c-plan{grid-area:plan} .c-trend{grid-area:trend} .c-res{grid-area:res} .c-hmi{grid-area:hmi} .c-plc{grid-area:plc} .c-log{grid-area:log} .c-safety{grid-area:safety}
+}
+@media (max-width:700px){main{grid-template-columns:minmax(0,1fr);grid-template-areas:"plan" "hmi" "plc" "trend" "res" "log" "safety"}}
+@media (max-width:600px){main{padding:12px 16px;gap:12px}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:14px}
 .card>h2,.card>summary{margin:0;padding:9px 12px;font:600 11px/1.2 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
 .card>summary{cursor:pointer;list-style:none} .card>summary::-webkit-details-marker{display:none}
@@ -234,6 +250,7 @@ th .u{display:block;font:500 11px var(--mono);letter-spacing:0;text-transform:no
 .fault .fmsg b{color:var(--alarm);font-weight:700;margin-right:8px}
 .fault .fwhy{font:500 12.5px var(--mono)}
 .fault .fhint{color:var(--muted);font-size:12.5px;margin-top:2px}
+.fault .fback{flex:none;height:34px;padding:0 14px}
 .fault .fbtn{flex:none;font-weight:600;background:var(--alarm-fill);border-color:var(--alarm-fill);color:#fff;height:34px;padding:0 14px}
 .fault .fbtn:hover{border-color:var(--ink)}
 .fault.stopping{border-top-color:color-mix(in srgb, var(--soft) 55%, transparent);background:color-mix(in srgb, var(--soft) 12%, var(--panel))}
@@ -317,6 +334,30 @@ input.unsv,select.unsv{color:var(--soft);border-color:var(--soft)}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 #toast.ok{background:var(--ok);color:var(--on-ok)} #toast.err{background:var(--alarm-fill);color:#fff}
 @media (prefers-reduced-motion: reduce){#toast{transition:none}}
+/* alerts — stacked cards, bottom right: bad = red (stays until closed), wrn = yellow, info = grey (both fade) */
+#alerts{position:fixed;right:16px;bottom:16px;z-index:45;width:min(380px, calc(100vw - 32px));display:flex;flex-direction:column;gap:8px;pointer-events:none}
+#alerts>*{pointer-events:auto}
+#alerts .alclr{align-self:flex-end;font:600 11.5px var(--sans);height:24px;padding:0 10px;background:var(--panel);box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.al{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:4px 10px;align-items:start;padding:10px 10px 10px 12px;border:1px solid var(--line2);border-left:4px solid var(--muted);border-radius:8px;
+  background:var(--panel);box-shadow:0 10px 30px rgba(0,0,0,.22);animation:alIn .18s ease-out}
+.al>svg{width:18px;height:18px;margin-top:1px;color:var(--muted)}
+.al b{display:block;font:700 13px/1.35 var(--sans);color:var(--ink)}
+.al b .n{font:600 11px var(--mono);color:var(--muted);margin-left:6px}
+.al p{margin:2px 0 0;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.al .act{grid-column:2;display:flex;gap:6px;margin-top:4px}
+.al .x{width:24px;height:24px;padding:0;justify-content:center;border:0;background:none;color:var(--muted);font-size:16px}
+.al .x:hover{color:var(--ink)}
+.al.bad{border-left-color:var(--alarm)} .al.bad>svg,.al.bad b{color:var(--alarm)}
+.al.wrn{border-left-color:var(--soft)} .al.wrn>svg{color:var(--soft)}
+@keyframes alIn{from{opacity:0;transform:translateX(16px)}}
+@media (prefers-reduced-motion: reduce){.al{animation:none}}
+/* size checks under the HMI form (same rules as the pop-ups) */
+.chk{display:grid;gap:4px;margin-top:8px;font-size:12px;line-height:1.45}
+.chk:empty{display:none}
+.chk div{padding:5px 8px;border-radius:5px;border-left:3px solid var(--muted);background:var(--panel2);color:var(--muted)}
+.chk div b{color:var(--ink);font-weight:600;margin-right:6px}
+.chk .bad{border-left-color:var(--alarm)} .chk .bad b{color:var(--alarm)}
+.chk .wrn{border-left-color:var(--soft)}
 /* keyboard shortcuts dialog — opens at start (until "don't show") and with ? */
 kbd{display:inline-block;min-width:22px;text-align:center;font:600 11.5px/1.5 var(--mono);color:var(--ink);background:var(--panel2);border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:0 6px}
 #keys{width:min(460px, calc(100vw - 32px));padding:0;border:1px solid var(--line2);border-radius:10px;background:var(--panel);color:var(--ink);box-shadow:0 18px 50px rgba(0,0,0,.35)}
@@ -496,10 +537,12 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
   <div class="fault" id="fault" role="alert" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.3v.2"/></svg>
     <div class="fmsg"><b id="faultTtl">Line stopped</b><span class="fwhy" id="faultWhy"></span><div class="fhint" id="faultHint"></div></div>
+    <button class="fback" id="faultBack" title="Pause and go back to just before the stop, to watch it happen">Go back to it</button>
     <button class="fbtn" id="ackBtn">Reset / restart line</button>
   </div>
 </header>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="alerts" aria-live="polite" aria-label="Alerts"></div>
 
 <dialog id="keys" aria-labelledby="keysTtl">
   <h2 id="keysTtl">Keyboard shortcuts</h2>
@@ -522,7 +565,7 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
 
 <main>
   <section>
-    <div class="card">
+    <div class="card c-plan">
       <h2>Plan view — glass flow → <span class="row" style="gap:8px"><button class="sm lit" id="scaleBtn" title="Drawn to scale — click to stretch across the line">1:1 true scale · click to stretch ↕</button><span class="r" id="roomLbl">Top paint room</span></span></h2>
       <canvas id="cv" width="1481" height="411" style="height: 410.564px;" role="img" aria-label="Plan view of the Top paint room: rollers, sensors and glass moving left to right"></canvas>
       <div id="hover" class=""></div>
@@ -545,12 +588,12 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
         <span><i class="lg-broken"></i>Broken sheet</span>
       </div>
     </div>
-    <div class="card">
+    <div class="card c-trend">
       <h2>Room conveyor speed · last 40 s <span class="r"><span class="hi">━ actual</span> &nbsp; <span class="dim">┅ command</span></span></h2>
       <canvas id="tr" style="height:130px" width="1481" height="130" role="img" aria-label="Room conveyor speed over the last 40 seconds: actual against command"></canvas>
     </div>
-    <details class="card" id="resCard">
-      <summary><span>Speed-up / back to base per load</span> <span class="r" style="margin-left:auto">pred = formula · sim = simulated <b class="unc" title="Computed with sim defaults (A, speeds, encoder resolution, layout) that are not confirmed online yet">sim defaults</b> <button class="sm" id="csvBtn" title="Download all loads as CSV"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14"/></svg>CSV</button></span></summary>
+    <div class="card c-res" id="resCard">
+      <h2><span>Speed-up / back to base per load</span> <span class="r" style="margin-left:auto">pred = formula · sim = simulated <b class="unc" title="Computed with sim defaults (A, speeds, encoder resolution, layout) that are not confirmed online yet">sim defaults</b> <button class="sm" id="csvBtn" title="Download all loads as CSV"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 4.5 5-4.5M5 20h14"/></svg>CSV</button></span></h2>
       <div class="tw" style="max-height:480px"><table id="res"><thead>
         <tr><th></th><th></th><th></th><th></th><th></th><th class="grp" colspan="3">Speed-up at<span class="u">glass front, mm</span></th><th class="grp" colspan="3">Back to base at<span class="u">glass front, mm</span></th><th class="grp" colspan="2">Curtain @ high<span class="u">% of glass</span></th><th class="grp" colspan="2">High speed<span class="u">seconds</span></th><th class="grp" colspan="2"><span id="inRoomHdr">In room (Inlet ↓ → Exit ↑)</span><span class="u">seconds</span></th></tr>
         <tr><th>Load</th><th class="l">Size<span class="u">W×L in · across×flow</span></th><th>PLC L<span class="u">in</span></th><th>Gₛ<span class="u">slow p</span></th><th>K<span class="u">p</span></th>
@@ -559,14 +602,15 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
           <th class="bl">pred</th><th>sim</th><th class="bl">pred</th><th>sim</th><th class="bl">pred</th><th>sim</th></tr>
       </thead><tbody></tbody></table></div>
       <div class="units"><b>Units</b> · in = inch · mm = millimetre · s = seconds · <b>slow p</b> = slow-encoder pulse (1 p = 0.3125 in = 7.94 mm) · <b>high p</b> = high-encoder pulse (1 p = 0.265 in = 6.73 mm) · positions = glass front, mm from Entry sensor · vs Inlet / vs Exit: + = after the sensor, − = before · pred = formula, sim = simulated</div>
-    </details>
+    </div>
   </section>
 
   <aside>
 
-    <div class="card"><h2>HMI size</h2><div class="pad">
+    <div class="card c-hmi"><h2>HMI size</h2><div class="pad">
       <label class="f">Size (production list)<select id="preset"></select></label>
       <div class="sensOn" id="hmiSens" aria-live="polite"></div>
+      <div class="chk" id="rChk"></div>
       <div class="grid3" style="margin-top:8px">
         <label class="f">Sheet W (in)<input type="number" id="rW" min="6" max="96" step="1"></label>
         <label class="f">Sheet L (in)<input type="number" id="rLen" step="0.5" min="6" max="200"></label>
@@ -578,7 +622,7 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
         <label class="f">Load gap (in)<input type="number" id="rGapY" step=".5" min="0"></label>
         <label class="f" title="Delay when the size changes: no new glass is fed for this long after Confirm">Job change (min)<input type="number" id="rJob" step="0.5" min="0" value="1"></label>
       </div>
-      <div class="row" style="margin-top:10px"><button class="primary" id="confirmBtn" disabled="" title="Change the size first — a job change only happens when the size changes">Size unchanged</button></div>
+      <div class="row" style="margin-top:10px"><button class="primary" id="confirmBtn" disabled="" title="Change the size first — a job change only happens when the size changes">Size unchanged</button><button id="cancelBtn" hidden title="Drop the edits and put the running size back in the form (no job change)">Cancel</button></div>
       <div class="note" id="rNote"></div>
       <details class="pred"><summary class="kr-h"><span>Predicted for this size</span></summary>
         <span class="kr-act" hidden><button class="sm" id="blPin" title="Keep the current parameters and layout as the reference, then change things in Settings to see the difference">Pin as baseline</button><button class="sm" id="blClr" hidden>Clear</button></span>
@@ -587,17 +631,17 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
       </details>
     </div></div>
 
-    <div class="card"><h2>Siemens PLC — load queue</h2>
+    <div class="card c-plc"><h2>Siemens PLC — load queue</h2>
       <div class="tw" style="max-height:220px"><table id="plc"><thead><tr><th>#</th><th class="l">Sheets<span class="u">pcs</span></th><th>L<span class="u">in</span></th><th>Gₛ<span class="u">slow p</span></th><th>K<span class="u">p</span></th><th>X<span class="u">high p</span></th><th class="l">State</th><th>Remain<span class="u">sp / hp</span></th></tr></thead><tbody></tbody></table></div>
       <div class="pad kv" id="encKv" style="padding-top:8px"><span>Slow enc #1</span><span>328 p</span><span>High enc</span><span>387 p · 105 mm/s</span></div>
       <div class="units">sp = slow pulses left until speed-up · hp = high pulses left until back to base · WAIT → HIGH → DONE</div>
     </div>
 
-    <div class="card"><h2>Event log <span class="r"><label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="motOnly" checked="">motion only</label> <button class="sm" id="clrLog">Clear</button></span></h2><div id="log" role="log" aria-live="off" aria-label="Event log"></div></div>
+    <div class="card c-log"><h2>Event log <span class="r"><label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="motOnly" checked="">motion only</label> <label style="font-size:11px;display:inline-flex;gap:4px;align-items:center" title="Pop-up cards for collisions, curtain at base speed, size and layout problems"><input type="checkbox" id="alertsOn" checked="">pop-ups</label> <button class="sm" id="clrLog">Clear</button></span></h2><div id="log" role="log" aria-live="off" aria-label="Event log"></div></div>
 
-    <details class="card" id="safety"><summary><span>Fault injection &amp; Mitsubishi checks</span></summary><div class="pad">
+    <details class="card c-safety" id="safety"><summary><span>Fault injection &amp; Mitsubishi checks</span></summary><div class="pad">
       <label style="font-size:12.5px;display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="mitsuOn" style="margin-top:3px"><span>Run Mitsubishi checks (length compare, speed-up timer, lane / A-B sensor checks). Off = motion only.</span></label>
-      <label style="margin-top:8px;font-size:12.5px;display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="ilk" style="margin-top:3px"><span>Alarms trip interlock. (Charge Too Long always stops the line.)</span></label>
+      <label style="margin-top:8px;font-size:12.5px;display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="ilk" style="margin-top:3px"><span>Alarms trip interlock. (Charge Too Long and glass collision always stop the line.) Every stop works like E-STOP: Base stops at once, Top finishes the high-speed load first.</span></label>
       <div class="row" style="margin-top:10px">
         <button data-f="break">Break glass in room</button>
         <button data-f="overlap">Overlap next load</button>
@@ -1097,7 +1141,7 @@ function newState(){
     SI:{prev:false, open:null, loads:[], id:1, cmd:'BASE'}
   };
   for (const s of SEC) S.M.fifo[s] = [];
-  SNAPS = [];
+  SNAPS = []; alertReset();
 }
 /* Step back: a snapshot of S every 0.5 s of sim time (last ~10 min); going back restores the newest one at or before the
    target and replays to it. The simulation is deterministic, so the replay lands on the same state. */
@@ -1118,8 +1162,16 @@ function log(level, src, msg, key){
 }
 function stopNow(){ if (S.run) S.stopT = S.t; S.run=false; S.stopReq=null; }
 function requestFinishStop(){ if (S.run) S.stopReq='finish'; }
-function hardM(msg, key){ if (log('HARD','MITSU',msg,key) && P.interlock) stopNow(); }
-function siemensAlarm(msg, key){ if (log('HARD','SIEMENS',msg,key) && P.interlock) requestFinishStop(); }
+/* every stop, whatever the cause, works like E-STOP I2.0 as tested on site: Base stops at once (glass may stay under the curtain);
+   Top keeps the belt servo at high until the pass ends (FC11 holds it via I11.4 "pouring speed"), then stops.
+   Planned change: both stop at once — PLC-ESTOP-Interlock-Change.md */
+function lineStop(){ if (room==='top' && S.SI.loads.some(L=>L.state==='HIGH')) requestFinishStop(); else stopNow(); }
+function hardM(msg, key){ if (log('HARD','MITSU',msg,key) && P.interlock) lineStop(); }
+/* run-up / retardation: the fail-safe fault outputs Q14.2 / Q14.3 (Top Q20.2 / Q20.3) also reset the high command Q14.7 / Q20.7,
+   so there is no pass to finish (and with a dead high encoder it never would) — the line stops at once in both rooms */
+function siemensAlarm(msg, key){ if (log('HARD','SIEMENS',msg,key) && P.interlock){
+  for (const L of S.SI.loads) if (L.state==='HIGH'){ L.state = 'DONE'; L.tDecel = S.t; L.frontAtDecel = frontOf(L); }
+  lineStop(); } }
 const mm = inch => Math.round(inch*IN2MM);
 const fmtRel = inch => (inch>=0?'+':'−') + Math.abs(mm(inch)) + ' mm';
 
@@ -1210,7 +1262,9 @@ function step(dt){
       const oTail = o.x - o.len;
       if (s.x > oTail && s.prevX <= oTail + 0.6){
         s.x = oTail; s.v = Math.min(s.v, o.v); s.vc = s.v;
-        log('SOFT','MOTION',`Glass contact: L${s.load.id} caught up with L${o.load.id}`, 'contact'+s.id);
+        const z = g.zones.find(z => z.a <= oTail && z.b >= oTail);
+        // a collision always stops the line, like Charge Too Long (sim only: the line has no collision sensor). Latched per sheet, kept over a restart.
+        if (log('HARD','SIM',`GLASS COLLISION: ${s.load===o.load ? `two sheets of L${s.load.id} touched` : `L${s.load.id} ran into L${o.load.id}`} at ${mm(oTail)} mm${z ? ' on ' + TYPES[z.type].label.toLowerCase() : ''}`, 'contact'+s.id)) lineStop();
       }
     }
   }
@@ -1308,7 +1362,7 @@ function siemens(){
   if (SI.open && !SI.open.final){
     const o = SI.open;
     if (c - o.firstOn > P.chargeLong && !o.ctl){ o.ctl = true;
-      log('HARD','SIEMENS',`CHARGE TOO LONG: load S${o.id} > ${P.chargeLong} slow p — line stopped`); stopNow(); }
+      log('HARD','SIEMENS',`CHARGE TOO LONG: load S${o.id} > ${P.chargeLong} slow p`); lineStop(); }
     if (!sig && o.lastOff!=null && c - o.lastOff > P.gapLimit) finalize(o);
   }
   SI.prev = sig;
@@ -1569,7 +1623,7 @@ function draw(){
   ctx.textAlign='right'; ctx.font='600 12px IBM Plex Mono, monospace';
   ctx.fillStyle = !S.run ? C.alarm : hi ? C.high : C.base;
   ctx.fillText(!S.run ? 'LINE STOPPED' : `${(S.roomV/MM2IN).toFixed(0)} mm/s ${hi?'HIGH':'BASE'}`, w-10, 14);
-  if (S.stopReq){ ctx.fillStyle = C.alarm; ctx.fillText('E-STOP: finishing high-speed cycle…', w-10, 30); }
+  if (S.stopReq){ ctx.fillStyle = C.alarm; ctx.fillText('STOPPING: finishing high-speed cycle…', w-10, 30); }
   if (S.jobUntil && S.t < S.jobUntil){   // job-change pill, bottom centre of the rollers
     const msg = `JOB CHANGE → ${R.name} · next load in ${fmtClock(S.jobUntil - S.t)}`;
     ctx.font = '700 12px IBM Plex Mono, monospace'; const tw = ctx.measureText(msg).width + 24, bx = w/2 - tw/2, by = Y(HH) - 34;
@@ -1948,6 +2002,7 @@ function faultInfo(){
     : /^RUN-UP FAULT/.test(m) ? 'The room did not reach high speed in time. If you injected "VFD no run-up" or "High encoder dead", clear it first.'
     : /^RETARDATION FAULT/.test(m) ? 'The room stayed at high speed after the base command. If you injected "VFD stuck high", clear it first.'
     : /EMERGENCY STOP/.test(m) ? 'E-STOP was pressed. Restart the line when it is safe.'
+    : /^GLASS COLLISION/.test(m) ? 'The glass in front was slower (free rollers / chain at base) than the glass behind it. Simulator stop: the real line has no collision sensor. Check the load gap and speeds, then restart.'
     : /^(LENGTH|LANE|SENSOR|SPEED-UP CHECK)/.test(m) ? 'A Mitsubishi check tripped the interlock. Clear any stuck sensor or injected fault, check the HMI size, then restart.'
     : 'See the event log for the cause, then restart.';
   return { why: m || 'No alarm recorded', t: e ? e.t : (S.stopT ?? S.t), hint };
@@ -1961,7 +2016,8 @@ function updateFault(){
   f.classList.toggle('stopping', stopping);
   $('#faultTtl').textContent = stopped ? 'Line stopped' : 'Stopping';
   $('#faultWhy').textContent = `${fi.why} · at ${fi.t.toFixed(1)} s`;
-  $('#faultHint').textContent = stopped ? fi.hint : 'Finishing the load at high speed first; the line stops once it is back to base.';
+  $('#faultHint').textContent = stopped ? fi.hint : 'Top room, like E-STOP: finishing the load at high speed first; the line stops once it is back to base.';
+  f._t = fi.t;
 }
 
 function updateUI(){
@@ -1970,7 +2026,7 @@ function updateUI(){
   $('#cSim').textContent = running ? 'RUNNING' : 'PAUSED'; $('#cSim').className = 'v ' + (running ? 'ok' : 'base');
   $('#cTime').textContent = S.t.toFixed(1)+' s';
   { const same = sizeSig(formSize()) === sizeSig(R), b = $('#confirmBtn');
-    b.disabled = same; b.classList.toggle('ready', !same); b.textContent = same ? 'Size unchanged' : 'Confirm (send to PLC)';
+    b.disabled = same; b.classList.toggle('ready', !same); b.textContent = same ? 'Size unchanged' : 'Confirm (send to PLC)'; $('#cancelBtn').hidden = same;
     b.title = same ? 'Change the size first — a job change only happens when the size changes' : `Job change to the new size (${$('#rJob').value||0} min)`; }
   { const on = S.jobUntil && S.t < S.jobUntil;
     $('#jobChip').classList.toggle('active', !!on);
@@ -1981,7 +2037,8 @@ function updateUI(){
     const pv = $('#preset').value, fs = formSize();
     const nextOn = (pv!=='custom' && PRESETS[+pv] && PRESETS[+pv].on) || coverage(fs);
     $('#hmiSens').innerHTML = SEC.map((sc,i) => { const on = nextOn.includes(String(i+1)), was = secOn(sc), chg = on!==was;
-      return `<div class="so ${on?'on':'off'}" title="${sc}"><b>${sc[0]}</b><span>${sc}</span><i>${on?'ON':'OFF'}</i>${chg?`<em>was ${was?'ON':'OFF'}</em>`:''}</div>`; }).join(''); }
+      return `<div class="so ${on?'on':'off'}" title="${sc}"><b>${sc[0]}</b><span>${sc}</span><i>${on?'ON':'OFF'}</i>${chg?`<em>was ${was?'ON':'OFF'}</em>`:''}</div>`; }).join('');
+    setHTML($('#rChk'), sizeChecks(fs, formOn()).map(i => `<div class="${i.kind}"><b>${i.title}</b>${i.detail}</div>`).join('')); }
 
   { const pv = $('#preset').value, T = {nAcross:+$('#rAcross').value||1, w:+$('#rW').value||0, align:$('#rAlign').value,
       len:+$('#rLen').value||0, nLen:+$('#rNLen').value||1, gapX:+$('#rGapX').value||0};
@@ -2066,7 +2123,7 @@ function buildLayoutEditor(){
     + `<label class="f" title="Distance between the 2 sensors of a pair">Gap in a pair${inp('pairGapMM')}</label>`;
   markUnsaved();
 }
-function layoutChanged(){ saveLayout(); markEdited(); G = geom(); buildLayoutEditor(); setDirty(true); histPush(); }
+function layoutChanged(){ saveLayout(); markEdited(); G = geom(); buildLayoutEditor(); setDirty(true); histPush(); alertSync('lay', layoutChecks()); }
 /* undo / redo for every layout & parameter edit (both rooms): one snapshot per change · Ctrl+Z / Ctrl+Y on the Settings page */
 const UNDO = { undo:[], redo:[], cur:null, busy:false };
 const histSnap = () => JSON.stringify({L:LAYOUT, P:paramsObj()});
@@ -2101,6 +2158,126 @@ function toast(msg, kind=''){
   t.style.top = ($('#hdr').getBoundingClientRect().bottom + 12) + 'px';
   void t.offsetWidth; t.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* ---------------- alerts: pop-up cards, bottom right ----------------
+   Runtime ('run|…'): from the event log and a few watchers, each once per run (Reset / room switch starts over).
+   Size / layout checks: kept in sync with the inputs, so a card closes by itself once its problem is fixed. */
+const ALERT = { on:true, cards:new Map(), done:new Set(), seen:new Set(), sync:{}, cov:new Set() };
+try { ALERT.on = localStorage.getItem('fcsim.alerts')!=='0'; } catch(e) {}
+const AL_ICON = {
+  bad:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.3v.2"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.2"/></svg>' };
+AL_ICON.wrn = AL_ICON.bad;
+const AL_LIFE = { info:5000, wrn:9000 };   // bad stays until closed
+/* o.act = [label, fn] · o.once = never again this run after it was shown · o.replace = an open card takes the new text (and action)
+   · o.quiet = … without counting it as another occurrence (size / layout checks) */
+function alertPop(key, kind, title, detail, o = {}){
+  if (!ALERT.on) return;
+  const had = ALERT.cards.get(key);
+  if (had){
+    if (o.replace){ had.el.className = 'al ' + kind; had.kind = kind; had.el.querySelector('.t').textContent = title; had.el.querySelector('p').textContent = detail; if (o.act) had.act = o.act; }
+    if (!o.quiet){ had.n++; had.el.querySelector('.n').textContent = '×' + had.n; alertTimer(had); }
+    return;
+  }
+  if (o.once){ if (ALERT.done.has(key)) return; ALERT.done.add(key); }
+  const el = document.createElement('div'); el.className = 'al ' + kind;
+  if (kind==='bad') el.setAttribute('role', 'alert');
+  el.innerHTML = `${AL_ICON[kind]}<div><b><span class="t"></span><span class="n"></span></b><p></p></div><button class="x" title="Close" aria-label="Close">×</button>`
+    + (o.act ? '<div class="act"><button class="sm"></button></div>' : '');
+  el.querySelector('.t').textContent = title; el.querySelector('p').textContent = detail;
+  const c = { key, kind, el, n:1, act:o.act };
+  el.querySelector('.x').addEventListener('click', () => alertClose(key));
+  if (o.act){ const b = el.querySelector('.act button'); b.textContent = o.act[0]; b.addEventListener('click', () => { c.act[1](); alertClose(key); }); }
+  el.addEventListener('mouseenter', () => clearTimeout(c.tm)); el.addEventListener('mouseleave', () => alertTimer(c));
+  ALERT.cards.set(key, c); $('#alerts').appendChild(el); alertTimer(c);
+  while (ALERT.cards.size > 4){   // too many: drop the oldest, a fading one first
+    const old = [...ALERT.cards.values()]; alertClose((old.find(x => x.kind!=='bad') || old[0]).key); }
+  alertClrBtn();
+}
+function alertTimer(c){ clearTimeout(c.tm); if (AL_LIFE[c.kind]) c.tm = setTimeout(() => alertClose(c.key), AL_LIFE[c.kind]); }
+function alertClose(key){ const c = ALERT.cards.get(key); if (!c) return; clearTimeout(c.tm); c.el.remove(); ALERT.cards.delete(key); alertClrBtn(); }
+function alertClrBtn(){ let b = $('#alerts .alclr');
+  if (ALERT.cards.size < 2){ if (b) b.remove(); return; }
+  if (!b){ b = document.createElement('button'); b.className = 'sm alclr'; b.textContent = 'Close all';
+    b.addEventListener('click', () => [...ALERT.cards.keys()].forEach(alertClose)); $('#alerts').prepend(b); } }
+function alertReset(){ for (const k of [...ALERT.cards.keys()]) if (k.startsWith('run|')) alertClose(k);
+  ALERT.done.clear(); ALERT.seen.clear(); ALERT.cov.clear(); }
+/* list = [{k, kind, title, detail, act}] for one prefix; new problems pop (all of them with force), fixed ones close. info stays inline only. */
+function alertSync(prefix, list, force){
+  const prev = ALERT.sync[prefix] || new Set(), now = new Set();
+  for (const i of list){ if (i.kind==='info') continue; const k = prefix + '|' + i.k; now.add(k);
+    if (ALERT.cards.has(k) || force || !prev.has(k)) alertPop(k, i.kind, i.title, i.detail, {act:i.act, replace:true, quiet:true}); }
+  for (const k of prev) if (!now.has(k)) alertClose(k);
+  ALERT.sync[prefix] = now;
+}
+
+/* a size before it runs (T = formSize() or a preset, on = the HMI L/C/R it turns on, '' for custom): across width, Charge Too Long, curtain, sensors */
+function sizeChecks(T, on){
+  const out = [], add = (k, kind, title, detail) => out.push({k, kind, title, detail});
+  const n = T.nAcross, lanes = lateral(T), hw = HW(), offL = -hw - lanes[0][0], offR = lanes[n-1][1] - hw;
+  if (offL > 0.01 || offR > 0.01)
+    add('off', 'bad', 'Glass hangs off the rollers', `${n} × ${T.w} in needs ${mm(lanes[n-1][1] - lanes[0][0])} mm across, the rollers are ${P.rollerWidthMM} mm wide: ${mm(Math.max(offL, offR))} mm over the ${offR >= offL ? 'right' : 'left'} edge.`);
+  if (n*T.w > P.maxGlassW + 1e-6)
+    add('wide', 'wrn', 'Wider than the max glass width', `${n} × ${T.w} in = ${n*T.w} in > ${P.maxGlassW} in, so the sheets are placed with no gap between them.`);
+  const span = lNet(T), sp = Math.round(span/P.slowRes), margin = Math.floor(P.chargeLong - span/P.slowRes);
+  if (margin < 0) add('long', 'bad', 'Load too long: Charge Too Long', `${T.nLen} × ${T.len} in in flow = ${mm(span)} mm ≈ ${sp} slow p > ${P.chargeLong} p. The PLC stops the line on this load.`);
+  else if (margin < 40) add('long', 'wrn', 'Close to Charge Too Long', `Load ≈ ${sp} slow p, limit ${P.chargeLong} p: only ${margin} p margin.`);
+  const p = predict(T);
+  if (p.cov < 99.5){
+    const why = [], tail = p.decel - span;
+    if (p.accel > G.curtain) why.push(`speed-up at ${mm(p.accel)} mm is after the curtain (${mm(G.curtain)} mm), the first ${mm(Math.min(span, p.accel - G.curtain))} mm runs at base`);
+    if (tail < G.curtain) why.push(`back to base at ${mm(p.decel)} mm with the tail still ${mm(Math.min(span, G.curtain - tail))} mm before the curtain`);
+    add('curtain', p.cov < 80 ? 'bad' : 'wrn', 'High speed does not cover the curtain',
+      `Only ${p.cov.toFixed(0)}% of the glass passes the curtain at high speed (rest = thick film)` + (why.length ? `: ${why.join('; ')}.` : '.'));
+  }
+  const got = coverage(T);
+  if (!got) add('sens', 'bad', 'No sensor pair covered', `The glass misses every L / C / R pair (needs ${mm(P.covMargin)} mm past the beam): the PLC never sees it.`);
+  else if (P.siemensEntry==='left' && !got.includes('1')) add('sens', 'bad', 'Entry LEFT pair not covered', 'Siemens measures the load on the Entry LEFT pair only: this glass gets no speed-up and is coated at base speed.');
+  if (on && [...on].some(c => !got.includes(c))) add('on', 'wrn', 'ON sensor not covered', `The HMI turns ${lcr(on)} ON but the glass covers ${lcr(got)}: the Mitsubishi checks will see a lane / pair fault.`);
+  if (p.late) add('late', 'info', 'PLC knows L late', 'The load closes after the formula speed-up point, so the speed-up comes late.');
+  return out;
+}
+const formOn = () => { const pv = $('#preset').value; return pv!=='custom' && PRESETS[+pv] ? PRESETS[+pv].on : ''; };
+const sizeAlerts = force => alertSync('size', sizeChecks(formSize(), formOn()), force);
+/* the room layout: curtain and sensor order (row overlaps already show red in the table) */
+function layoutChecks(){
+  const out = [], add = (k, kind, title, detail) => out.push({k, kind, title, detail}), nm = room==='top' ? 'Top' : 'Base';
+  if (G.belts.length < 2) add('belts', 'wrn', `${nm} room: the curtain needs 2 belts`, `The curtain is the centre of the gap between the two belts. With ${G.belts.length} belt(s) it is placed at ${mm(G.curtain)} mm.`);
+  if (G.exit <= G.inlet) add('order', 'bad', `${nm} room: Exit is not after Inlet`, `Inlet ${mm(G.inlet)} mm, Exit ${mm(G.exit)} mm: the in-room timer and the speed-up check can't work.`);
+  else if (G.curtain <= G.inlet || G.curtain >= G.exit) add('curtain', 'wrn', `${nm} room: curtain outside Inlet → Exit`, `Curtain ${mm(G.curtain)} mm, Inlet ${mm(G.inlet)} mm, Exit ${mm(G.exit)} mm.`);
+  return out;
+}
+
+/* runtime: log entries → pop-ups. Seen = time + text, so the replay after Back doesn't pop them again. */
+function goBackTo(t){ setRunning(false); stepBack(Math.max(0, S.t - t + 0.5)); toast(`Paused at ${S.t.toFixed(1)} s, just before it happened`); }
+const LOG_ALERTS = [
+  [/^Front edge at (\d+) p ignored/, m => ['ctr'+m[1], 'wrn', 'Load not measured', 'Both PLC counters were busy when the next glass reached Entry: it gets no speed-up of its own. Is the load gap too short?']],
+  [/^(S\d+) speeds up while another/, m => ['hh'+m[1], 'wrn', 'Two loads at high speed', `${m[1]} sped up while the load before it was still at high speed. The design expects one load at a time.`]],
+  [/^Sensor fault (\S+) \(pair disagrees\)/, m => ['pair'+m[1], 'wrn', 'Sensor pair disagrees', `${m[1]} differs from its partner for more than 0.15 s (stuck, or the glass covers only one of the two).`]],
+  [/^Job change finished — feeding (.*)/, (m, e) => ['job'+Math.round(e.t), 'info', 'Job change finished', `Feeding ${m[1]}.`]]
+];
+function alertTick(){
+  const show = !pageIs('settings') && !pageIs('master');   // runtime pop-ups only on the simulator page (they stay in the log)
+  const pop = (k, kind, title, detail, o = {}) => { if (show) alertPop('run|'+k, kind, title, detail, {...o, once:true}); };
+  for (let i = S.log.length-1; i >= 0; i--){   // oldest first
+    const e = S.log[i], sk = e.t.toFixed(1) + '|' + e.msg;
+    if (ALERT.seen.has(sk)) continue; ALERT.seen.add(sk);
+    if (e.level==='HARD' && e.src!=='SAFETY' && S.run && !S.stopReq){   // it did not stop the line: interlock off
+      pop('hard'+e.msg.split(/[:(]/)[0], 'bad', 'Alarm (interlock off, line keeps running)', e.msg); continue; }
+    for (const [re, f] of LOG_ALERTS){ const m = e.msg.match(re); if (m){ pop(...f(m, e)); break; } }
+  }
+  if (ALERT.seen.size > 5000) ALERT.seen = new Set([...ALERT.seen].slice(-1000));
+  /* each load once all of it is past the curtain: how much was coated at high speed */
+  for (const L of S.loads.slice(-12)){
+    if (ALERT.cov.has(L.id)) continue;
+    const d = loadData(L); if (!d.covDone || d.covSim==null) continue;
+    ALERT.cov.add(L.id);
+    if (d.covSim < 99) pop('cov'+L.r.name, d.covSim < 80 ? 'bad' : 'wrn', 'Glass under the curtain at base speed',
+      `L${L.id} ${L.r.name}: ${(100 - d.covSim).toFixed(0)}% of the glass passed the curtain at base speed (thick film), ${d.covSim.toFixed(0)}% at high.`,
+      {act:['Per-load table', () => $('#resCard').scrollIntoView({behavior:'smooth', block:'start'})]});
+  }
+  if (R.n > 0 && S.loads.length >= R.n && !S.sheets.length) pop('done', 'info', 'All loads done', `${R.n} load(s) of ${R.name} ran through the room.`);
 }
 const setDirty = d => { $('#dirty').hidden = !d; $('#laySaveDef').classList.toggle('ready', d); $('#laySaveDef').classList.toggle('idle', !d); };
 /* yellow = differs from the last Save (rows matched by id; by position if the ids don't line up) */
@@ -2295,7 +2472,7 @@ function markParams(){
   markUnsaved();
 }
 function paramsChanged(){ updateSECY(); G = geom(); if (typeof buildLayoutEditor==='function' && $('#layWidth')) buildLayoutEditor(); $('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1); markParams(); setDirty(true);
-  try { localStorage.setItem(WORK_P_KEY, JSON.stringify(paramsObj())); } catch(e) {} markEdited(); histPush(); }
+  try { localStorage.setItem(WORK_P_KEY, JSON.stringify(paramsObj())); } catch(e) {} markEdited(); histPush(); alertSync('lay', layoutChecks()); }
 
 /* ---------------- wiring ---------------- */
 let running = true, simSpeed = 2;
@@ -2315,7 +2492,14 @@ $('#confirmBtn').addEventListener('click', () => {
     S.jobStart = S.t; S.jobUntil = S.t + job*60;
     log('MOTION','HMI',`JOB CHANGE ${prev} → ${R.name}: no feeding for ${job} min (until sim ${fmtClock(S.jobUntil)})`);
   } else log('INFO','HMI',`Size confirmed: ${R.name}`);
+  sizeAlerts(true);   // sent anyway: every open problem pops again
 });
+$('#cancelBtn').addEventListener('click', () => {   // back to the running size, nothing sent
+  const i = PRESETS.findIndex(p => p.name===R.name);
+  $('#preset').value = i < 0 ? 'custom' : String(i); rToForm(); sizeAlerts();
+});
+/* size problems pop when a field is committed (change, not every keystroke) */
+['#preset','#rW','#rLen','#rNLen','#rAcross','#rAlign','#rGapX'].forEach(id => $(id).addEventListener('change', () => sizeAlerts()));
 $('#rNote').addEventListener('click', e => { if (e.target.id==='jobSkip'){ S.jobUntil = S.t; } });
 
 /* settings page */
@@ -2360,9 +2544,10 @@ function arrowNav(e, items, cur, pick){
 $('.stabs .tabl').addEventListener('keydown', e => arrowNav(e, [...document.querySelectorAll('.stabs [data-tab]')], e.target.closest('[data-tab]'), b => setTab(b.dataset.tab)));
 try { setTab(localStorage.getItem('setTab') || 'rows'); } catch(e){ setTab('rows'); }
 
-/* the preview card sticks right under the header (its height changes with the window width) */
+/* the preview card and the simulator side column stick right under the header
+   (its height changes with the window width, the fault banner and the hidden strip) */
 const pvPin = () => document.documentElement.style.setProperty('--pvTop', $('#hdr').offsetHeight + 'px');
-addEventListener('resize', pvPin);
+new ResizeObserver(pvPin).observe($('#hdr')); pvPin();
 
 /* master table: every production size through predict() / coverage() with the current room, layout and parameters */
 let MT_SIG = '', MT_SORT = {k:null, asc:true}, MT_GRP = 'all', MT_VIEW = 'sum';
@@ -2544,9 +2729,7 @@ function syncRunBtn(){ const b = $('#runBtn'); if (b._r === running) return; b._
   b.querySelector('.ic').innerHTML = running ? ICON.pause : ICON.play; b.querySelector('.tx').textContent = running ? 'Pause' : 'Run'; }
 function setRunning(v){ running = v; syncRunBtn(); }
 $('#runBtn').addEventListener('click', () => setRunning(!running));
-$('#csvBtn').addEventListener('click', e => { e.preventDefault(); downloadCSV(); });   // inside a <summary>: don't toggle the card
-try { $('#resCard').open = localStorage.getItem('fcsim.resOpen')==='1'; } catch(e){}
-$('#resCard').addEventListener('toggle', () => { try { localStorage.setItem('fcsim.resOpen', $('#resCard').open ? '1' : '0'); } catch(e){} });
+$('#csvBtn').addEventListener('click', downloadCSV);
 $('#uncBtn').addEventListener('click', () => { setPage('sim'); const d = $('#logicDet'); d.open = true; d.scrollIntoView({behavior:'smooth', block:'start'}); });
 $('#blPin').addEventListener('click', () => { BL[room] = { P:{...P}, L:JSON.parse(JSON.stringify(LAYOUT[room])), at:new Date() };
   toast(`Baseline pinned for the ${room==='top'?'Top':'Base'} room. Change parameters or the layout to compare.`, 'ok'); });
@@ -2561,16 +2744,16 @@ function setRoom(r){ room = r;
     b.classList.toggle('sel', on); b.setAttribute('aria-checked', on); b.tabIndex = on ? 0 : -1; });
   const nm = (r==='top'?'Top':'Base')+' paint room';
   $('#roomLbl').textContent = nm; cv.setAttribute('aria-label', `Plan view of the ${nm}: rollers, sensors and glass moving left to right`);
-  G = geom(); newState(); buildLayoutEditor(); paintLegend();
+  G = geom(); newState(); buildLayoutEditor(); paintLegend(); alertSync('lay', layoutChecks());
   document.documentElement.style.setProperty('--roomc', PAINT[r]); }
 $('#roomSeg').addEventListener('click', e => { const r = e.target.closest('[data-r]')?.dataset.r; if (r) setRoom(r); });
 $('#roomSeg').addEventListener('keydown', e => arrowNav(e, [...document.querySelectorAll('#roomSeg [data-r]')], e.target.closest('[data-r]'), b => setRoom(b.dataset.r)));
 /* E-STOP I2.0 as tested on site: Base stops at once (glass may stay under the curtain); Top keeps the belt servo at high
    until the pass ends (FC11 holds it via I11.4 "pouring speed"), then stops. Planned change: both stop at once — PLC-ESTOP-Interlock-Change.md */
-$('#estopBtn').addEventListener('click', () => { log('HARD','SAFETY','EMERGENCY STOP pressed');
-  if (room==='top' && S.SI.loads.some(L=>L.state==='HIGH')) requestFinishStop(); else stopNow(); });
-$('#ackBtn').addEventListener('click', () => { S.run = true; S.stopReq = null; S.roomV = G.vB;
-  S.latched = new Set([...S.latched].filter(k=>k.startsWith('soft'))); log('INFO','SAFETY','Line restarted'); });
+$('#estopBtn').addEventListener('click', () => { log('HARD','SAFETY','EMERGENCY STOP pressed'); lineStop(); });
+$('#ackBtn').addEventListener('click', () => { S.run = true; S.stopReq = null; S.roomV = G.vB;   // sheets already touching stay latched, or they would stop the line again at once
+  S.latched = new Set([...S.latched].filter(k=>k.startsWith('soft') || k.startsWith('contact'))); log('INFO','SAFETY','Line restarted'); });
+$('#faultBack').addEventListener('click', () => goBackTo($('#fault')._t));
 document.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { const f = b.dataset.f;
   if (f==='break') breakGlass();
   else if (f==='missing') { S.pendMissing = true; log('INFO','SIM','Next load will miss its right-most sheet'); }
@@ -2579,6 +2762,9 @@ document.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', (
 $('#mitsuOn').addEventListener('change', e => P.mitsu = e.target.checked);
 $('#ilk').addEventListener('change', e => P.interlock = e.target.checked);
 $('#motOnly').addEventListener('change', () => S.logDirty = true);
+$('#alertsOn').checked = ALERT.on;
+$('#alertsOn').addEventListener('change', e => { ALERT.on = e.target.checked; try { localStorage.setItem('fcsim.alerts', ALERT.on ? '1' : '0'); } catch(err) {}
+  if (!ALERT.on) [...ALERT.cards.keys()].forEach(alertClose); });
 $('#clrLog').addEventListener('click', () => { S.log = []; S.logDirty = true; });
 $('#themeBtn').addEventListener('click', () => { const r = document.documentElement;
   const dark = r.dataset.theme ? r.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
@@ -2626,7 +2812,7 @@ function frame(now){
   if (pageIs('settings')){   // simulator keeps stepping; only the visible page is drawn
     drawPreview();
   } else if (!pageIs('master')){ draw(); drawTrend(); }
-  if (now - lastUI > 200){ updateUI(); if (pageIs('master')) masterTick(); lastUI = now; }
+  if (now - lastUI > 200){ updateUI(); alertTick(); if (pageIs('master')) masterTick(); lastUI = now; }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
