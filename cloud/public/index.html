@@ -171,6 +171,8 @@ details.wide .body{padding:0 12px 12px}
 .pgroups{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:14px;align-items:start}
 @media (max-width:460px){.pgroups{grid-template-columns:minmax(0,1fr)}}
 .pgroups .card{margin:0}
+.spanel>.card+.pgroups,.spanel>.card+.card{margin-top:14px}
+.pgroups:empty{display:none}
 .pgroups .card>h2 .r{color:var(--faint)}
 .prow{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:10px;align-items:center;padding:6px 12px;border-bottom:1px solid var(--line);font-size:12.5px}
 .prow:last-child{border-bottom:0}
@@ -299,6 +301,12 @@ details.help b{color:var(--ink)}
 .savebox button.idle{opacity:.4}
 .savebox button.ready{background:var(--high);border-color:var(--high);color:var(--panel);font-weight:700;animation:confirmPulse 1.2s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){.savebox button.ready{animation:none;box-shadow:0 0 0 3px color-mix(in srgb, var(--high) 45%, transparent)}}
+/* undo / redo: one joined pair of quiet icon buttons right before Save */
+.savebox .hist{display:inline-flex}
+.savebox .hist button{width:30px;padding:0;justify-content:center;font:600 15px var(--sans);background:var(--panel2);color:var(--ink);border-color:var(--line2)}
+.savebox .hist button:hover:not(:disabled){color:var(--ink);opacity:1;border-color:var(--muted)}
+.savebox .hist button:first-child{border-radius:6px 0 0 6px}
+.savebox .hist button:last-child{border-radius:0 6px 6px 0;margin-left:-1px}
 .dirty{font:600 12px var(--sans);color:var(--soft)}
 .dirty[hidden]{display:none}
 /* a value changed since the last Save — same yellow as "● Unsaved changes" */
@@ -358,8 +366,20 @@ body.settings .gear{background:var(--ink);color:var(--panel);border-color:var(--
 #pv{display:block;width:100%;background:var(--canvas);cursor:crosshair}
 /* line preview: drawing on the left, controls on the right — same split as the simulator page */
 .pvgrid{display:grid;grid-template-columns:minmax(0,1fr) 380px}
-.pvmain{min-width:0;display:flex;flex-direction:column}
-.pvside{border-left:1px solid var(--line);background:var(--panel);min-width:0}
+.pvmain{min-width:0;display:flex;flex-direction:column;position:relative}
+/* how-to sits at the foot of the side panel instead of a strip under the drawing */
+.pvhint{margin-top:auto;display:grid;gap:3px;font:500 11px/1.45 var(--sans);color:var(--muted);padding:8px 12px 10px;border-top:1px solid var(--line)}
+.pvhint .k{font:600 10px/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:2px}
+.pvhint b{color:var(--ink);font-weight:600}
+.pvhint kbd{font:600 10px var(--mono);border:1px solid var(--line2);border-radius:3px;padding:0 4px;background:var(--panel2)}
+#pvPop{position:absolute;z-index:5;width:260px;background:var(--panel);border:1px solid var(--line2);border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.28);padding:8px 10px 10px;display:grid;gap:6px}
+#pvPop[hidden]{display:none}
+#pvPop .pt{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px}
+#pvPop .x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px}
+#pvPop label{display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+#pvPop input{width:100%;font:500 12.5px var(--mono);text-align:right}
+#pvPop .ro{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--faint);border-top:1px solid var(--line);padding-top:6px}
+.pvside{border-left:1px solid var(--line);background:var(--panel);min-width:0;display:flex;flex-direction:column}
 @media (max-width:1100px){.pvgrid{grid-template-columns:minmax(0,1fr)} .pvside{border-left:0;border-top:1px solid var(--line)}}
 /* pinned under the header while the tabs scroll (wide screens only — stacked it would be too tall) */
 body.settings .pvcard{position:sticky;top:var(--pvTop,58px);z-index:15;box-shadow:0 8px 18px -10px rgba(0,0,0,.45)}
@@ -375,7 +395,6 @@ body.settings .pvcard{position:sticky;top:var(--pvTop,58px);z-index:15;box-shado
 .pvcard>h2{flex-wrap:nowrap;white-space:nowrap}
 .pvcard>h2 .pvt{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .pvcard>h2 .pvh{min-width:0;flex:0 1 auto}
-.pvcard>h2 .pvh>.r{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .pvcard>h2 #pvPreset,.pvcard>h2 .savebox{flex:none}
 .savebox button{display:inline-flex;align-items:center;white-space:nowrap}
 #pvPreset{height:26px;width:auto;min-width:180px;padding:2px 8px;text-transform:none;letter-spacing:0;font:500 12px var(--mono)}
@@ -600,28 +619,38 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
   </div>
 
   <div class="card pvcard">
-    <h2><span class="pvt" title="Line preview — glass size on the layout">Line preview — glass size on the layout</span> <span class="pvh"><span class="r" title="mm from Entry · click the drawing to move the glass">mm from Entry · click the drawing to move the glass</span><select id="pvPreset" aria-label="Glass size shown in the preview"></select><span class="savebox">
+    <h2><span class="pvt" title="Line preview — glass size on the layout">Line preview — glass size on the layout</span> <span class="pvh"><select id="pvPreset" aria-label="Glass size shown in the preview"></select><span class="savebox">
+      <span class="hist"><button id="undoBtn" disabled="" aria-label="Undo">↶</button><button id="redoBtn" disabled="" aria-label="Redo" title="Redo (Ctrl+Y)">↷</button></span>
       <span class="dirty" id="dirty" hidden="" title="Layout or parameters changed since the last save">● Unsaved changes</span>
       <button class="primary idle" id="laySaveDef" title="Save the layout (both rooms) and all parameters as the default, in this browser and in the cloud · Ctrl+S"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px"><path d="M5 3.5h11.5L20 7v13.5H5z"/><path d="M8.5 3.5V9h7V3.5M8.5 20.5v-6h7v6"/></svg>Save</button>
     </span></span></h2>
     <div class="pvgrid">
       <div class="pvmain">
         <canvas id="pv" role="img" aria-label="Line preview: the chosen glass size placed on the roller layout, with Entry, Inlet, Exit and the predicted speed-up and back-to-base points"></canvas>
+        <div id="pvPop" hidden=""></div>
       </div>
-      <div class="pvside"><div id="pvInfo"></div></div>
+      <div class="pvside"><div id="pvInfo"></div>
+        <div class="pvhint"><span class="k">Edit on the drawing · mm from Entry</span>
+          <span><b>Drag</b> a sensor, wall, row, belt end or width edge</span>
+          <span><b>Click</b> a part for exact mm · empty space moves the glass</span>
+          <span><kbd>Shift</kbd> 10 mm steps · <kbd>Esc</kbd> cancels · <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd> undo / redo</span>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="stabs">
     <div class="tabl" role="tablist" aria-label="Settings sections">
-      <button data-tab="rows" role="tab" id="tab-rows" aria-controls="panel-rows">Roller layout <span class="dim">· <span id="layRoom">Top</span> room</span></button>
-      <button data-tab="sens" role="tab" id="tab-sens" aria-controls="panel-sens">Sensors &amp; curtain</button>
-      <button data-tab="params" role="tab" id="tab-params" aria-controls="panel-params">Parameters<span class="cnt" id="parCnt"></span></button>
+      <button data-tab="rows" role="tab" id="tab-rows" aria-controls="panel-rows">Line layout <span class="dim">· <span id="layRoom">Top</span> room</span><span class="cnt" data-cnt="rows"></span></button>
+      <button data-tab="sens" role="tab" id="tab-sens" aria-controls="panel-sens">Sensors<span class="cnt" data-cnt="sens"></span></button>
+      <button data-tab="motion" role="tab" id="tab-motion" aria-controls="panel-motion">Glass &amp; speed<span class="cnt" data-cnt="motion"></span></button>
+      <button data-tab="plc" role="tab" id="tab-plc" aria-controls="panel-plc">PLC logic<span class="cnt" data-cnt="plc"></span></button>
       <button data-tab="files" role="tab" id="tab-files" aria-controls="panel-files">Save &amp; files</button>
     </div>
   </div>
 
-  <div class="card spanel" data-panel="rows" id="panel-rows" role="tabpanel" aria-labelledby="tab-rows" hidden="">
+  <div class="spanel" data-panel="rows" id="panel-rows" role="tabpanel" aria-labelledby="tab-rows" hidden="">
+   <div class="card">
     <h2><span>Roller rows — in flow order, left → right</span> <span class="r">all values in mm · Entry sensor = 0</span></h2>
     <div class="tw" style="max-height:none"><table id="lay"><thead>
       <tr><th></th><th></th><th class="grp" colspan="3">Rollers</th><th class="grp">Belt</th><th class="grp">Gap</th><th class="grp" colspan="3">Where it sits on the line<span class="u">mm from Entry · ┃ = Entry / Inlet / Exit</span></th><th></th></tr>
@@ -640,21 +669,24 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
       </details>
     </div>
   </div>
+    <div class="pgroups" data-pg="rows"></div></div>
 
-  <div class="card spanel" data-panel="sens" id="panel-sens" role="tabpanel" aria-labelledby="tab-sens" hidden="">
-    <h2><span>Sensors &amp; room walls</span> <span class="r">position = edge of the chosen row + offset · + = downstream / right</span></h2>
+  <div class="spanel" data-panel="sens" id="panel-sens" role="tabpanel" aria-labelledby="tab-sens" hidden="">
+   <div class="card">
+    <h2><span>Along the line</span> <span class="r">mm · edge of the chosen row + offset · + = downstream</span></h2>
     <div class="tw" style="max-height:none"><table id="laySens"><thead><tr><th class="l">Sensor</th><th class="l">Tied to row</th><th class="l">Edge of that row</th><th>Offset<span class="u">mm, + = right</span></th><th>= Position<span class="u">mm from Entry</span></th></tr></thead><tbody></tbody></table></div>
-    <div class="pad">
-      <div class="ptgrid" id="layPts" style="margin-top:0"></div>
-      <div style="margin-top:14px;font:600 11px var(--mono);color:var(--muted);letter-spacing:.04em">SENSOR POSITION ACROSS THE GLASS WIDTH (both rooms · same values as the Parameters tab)</div>
-      <div class="ptgrid" id="layWidth"></div>
-      <p class="note">Sensors move with the row they are tied to; Entry is always 0. Room walls are drawing only (they don't change the motion). The curtain is always the centre of the belt gap — change the belt rows to move it.</p>
-    </div>
-  </div>
+    <p class="note pad" style="margin:0">Entry is always 0. Room walls are drawing only. The curtain is the centre of the belt gap.</p>
+   </div>
+   <div class="card"><h2><span>Across the glass width</span> <span class="r">mm · both rooms</span></h2>
+    <div class="pad"><div class="ptgrid" id="layWidth"></div></div></div>
+    <div class="pgroups" data-pg="sens"></div></div>
 
-  <div class="spanel" data-panel="params" id="panel-params" role="tabpanel" aria-labelledby="tab-params" hidden="">
-    <p class="note" style="margin:0 0 12px">Values marked <b class="unc">check #…</b> are sim defaults that the line has not confirmed yet; the number is the item in <span class="mono">info/PLC_online_checklist.csv</span>. A tinted row differs from the factory value.</p>
-    <div class="pgroups" id="params"></div></div>
+  <div class="spanel" data-panel="motion" id="panel-motion" role="tabpanel" aria-labelledby="tab-motion" hidden="">
+    <div class="pgroups" data-pg="motion"></div></div>
+
+  <div class="spanel" data-panel="plc" id="panel-plc" role="tabpanel" aria-labelledby="tab-plc" hidden="">
+    <p class="note" style="margin:0 0 12px"><b class="unc">check #…</b> = sim default not yet read from the line (item in <span class="mono">info/PLC_online_checklist.csv</span>). Tinted = differs from the factory value.</p>
+    <div class="pgroups" data-pg="plc"></div></div>
 
   <div class="card spanel" data-panel="files" id="panel-files" role="tabpanel" aria-labelledby="tab-files">
     <h2>Save, reset &amp; share the layout</h2>
@@ -707,7 +739,7 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
 <details class="wide" id="logicDet">
   <summary>Logic used &amp; open points</summary>
   <div class="body"><ul class="issues">
-    <li><b class="tag-c">CONFIRMED</b>Gₛ = glass length counted by the slow encoder (1 p = 0.3125 in) from Entry ON to OFF. The workbook tables that use L/0.265 are wrong (selectable in Parameters for comparison).</li>
+    <li><b class="tag-c">CONFIRMED</b>Gₛ = glass length counted by the slow encoder (1 p = 0.3125 in) from Entry ON to OFF. The workbook tables that use L/0.265 are wrong (selectable in Settings → PLC logic → Encoders, for comparison).</li>
     <li><b class="tag-c">CONFIRMED</b>Source: Siemens ladder printout FC0/FC1/FC2–FC5/FC10/FC12 (AFT SP MIR-SB03 book, p.16–100). The program doesn't know Single/Batch. If the <b>1st</b> sheet is ≤ 170 p it waits 30 p for another (the 2nd sheet is not length-checked); max 3 sheets — at the 3rd OFF it closes. L = 1st ON → last OFF incl. gaps (with 3 sheets the PLC adds L3 twice and never L2 — harmless for equal sheets).</li>
     <li><b class="tag-c">CONFIRMED</b>Speed-up when the slow counter (from the 1st front edge) reaches A + L − ⅓·L<sub>last</sub>; the command follows 150 ms later (T20/T40). X = 1110 − L + ⅔·L₁ − K, with K from the <b>1st sheet</b> length (top table steps at 340, base at 320); X is counted in high pulses (0.265 in) from the command. Single sheet: A + ⅔L and 1110 − ⅓L − K. Two counters: a 3rd load arriving while both wait is not tracked.</li>
     <li><b class="tag-c">CONFIRMED</b>Run-up fault: high command but &lt; 100 high p within T12 (base) / T32 (top). Retardation fault: base command but high-speed feedback after T13.</li>
@@ -715,7 +747,7 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
     <li><b class="tag-c">CONFIRMED</b>Yellow = chain conveyor (base only), pink = chain head, grey = free roller, blue = new free roller, purple = INV roller (2-speed, top room only: Mitsubishi inverter 33M1 switched by FC11 on the same PLC command as the Lenze servo — high with Q20.1, back to low at setpoint X / Q20.0).</li>
     <li><b class="tag-c">CONFIRMED</b>Designed for one load at high speed at a time; an overlap is logged (possible bug). Largest load 470 p — longer stops the line immediately (Charge Too Long).</li>
     <li><b class="tag-c">CONFIRMED</b>Gap inside a batch 2 in, between loads 10 in (= 32 p, only 2 p above the 30 p merge window). Speed change itself = instant (ramp 0 s).</li>
-    <li><b class="tag-q">ASSUMED</b>Glass touching both a 2-speed element and a chain follows the 2-speed element (Parameters → Glass physics). This decides whether the last sheet of the previous load, still half on belt 2, is yanked into the sheet ahead when the next load speeds up.</li>
+    <li><b class="tag-q">MODEL</b>Glass touching both a 2-speed element and a chain moves at the speed of whichever it touches over a longer length (more length = more weight = more friction; physics, not PLC · Settings → Glass &amp; speed → Glass). This decides whether the last sheet of the previous load, still half on belt 2, is yanked into the sheet ahead when the next load speeds up.</li>
     <li><b class="tag-a">FINDING</b>3-in-flow batches (24×36, 42×32, 48×36): with the ladder formula (speed-up at A + L − ⅓·L<sub>last</sub>) the 3rd sheet is already on the INV rollers at speed-up → 100 % coated at high speed in both rooms. (The earlier A + ⅔L formula left it on the free rollers in the base room → ~⅓ thick film; that finding is withdrawn.)</li>
     <li><b class="tag-a">FINDING</b>Top room, B 42×32 · 2×3 with 10 in between loads: the next load at high speed touches the last sheet of the previous load near the end of belt 2 (~1 m before Exit), which is still at base speed. Depends on the layout estimates — check on the line.</li>
     <li><b class="tag-q">ASSUMED</b>Layout dimensions are first estimates from position_sensor.pdf — correct them in the Layout editor. Base-room Exit sensor is a placeholder.</li>
@@ -884,47 +916,57 @@ const P = {
   vBaseMM:105, vHighMM:1240, slowRes:0.3125, highRes:0.265, accelPulses:146,
   batchLimit:170, gapLimit:30, maxSheets:3, chargeLong:470, rampS:0,
   aTopCtr2:150, cmdDelayS:0.15, runUpPulses:100, runUpBaseS:3.0, runUpTopS:1.5, retardS:1.5,
-  gsBasis:'slow', siemensEntry:'left', mixDrive:'room',
+  gsBasis:'slow', siemensEntry:'left', mixDrive:'more',
   tTopStart:'inletOff', tTopStop:'exitOn', tBaseStart:'inletOff', tBaseStop:'exitOn',
   mitsu:false, interlock:false,
   tolPulses:3, timerLimit:10.0, timerDebounce:0.3, laneTol:2,
-  rollerWidthMM:2650, pairGapMM:100, sensL:20, sensC:52, sensR:82, glassLeftMM:100, sensRef:'glass', gapCross:2, maxGlassW:96, covMargin:1
+  rollerWidthMM:2650, beltWidthMM:2650, pairGapMM:100, sensL:20, sensC:52, sensR:82, glassLeftMM:100, sensRef:'glass', gapCross:2, maxGlassW:96, covMargin:1
 };
 /* parameters saved with Save (only the Parameters-tab keys; same type as the factory value) */
 const PARAM_KEY = 'fcsim.params', FACTORY_P = {...P};
 const applyParams = o => { if (o) for (const k in o) if (k in P && typeof o[k]===typeof P[k]) P[k] = o[k]; };
 /* parameters built into the file by Download HTML; a Save in this browser still wins */
-let BAKED_PARAMS = {"vBaseMM":105,"vHighMM":1240,"slowRes":0.3125,"highRes":0.265,"rampS":0,"accelPulses":146,"aTopCtr2":150,"batchLimit":170,"gapLimit":30,"maxSheets":3,"chargeLong":470,"cmdDelayS":0.15,"runUpPulses":100,"runUpBaseS":3,"runUpTopS":1.5,"retardS":1.5,"gsBasis":"slow","siemensEntry":"left","tTopStart":"inletOff","tTopStop":"exitOn","tBaseStart":"inletOff","tBaseStop":"exitOn","mixDrive":"room","tolPulses":3,"timerLimit":10,"timerDebounce":0.3,"laneTol":2,"rollerWidthMM":2650,"glassLeftMM":100,"sensL":20,"sensC":52,"sensR":82,"pairGapMM":100,"gapCross":2,"maxGlassW":96,"covMargin":1}; /*@@BAKED_PARAMS@@*/
+let BAKED_PARAMS = {"vBaseMM":105,"vHighMM":1240,"slowRes":0.3125,"highRes":0.265,"rampS":0,"accelPulses":146,"aTopCtr2":150,"batchLimit":170,"gapLimit":30,"maxSheets":3,"chargeLong":470,"cmdDelayS":0.15,"runUpPulses":100,"runUpBaseS":3,"runUpTopS":1.5,"retardS":1.5,"gsBasis":"slow","siemensEntry":"left","tTopStart":"inletOff","tTopStop":"exitOn","tBaseStart":"inletOff","tBaseStop":"exitOn","mixDrive":"more","tolPulses":3,"timerLimit":10,"timerDebounce":0.3,"laneTol":2,"rollerWidthMM":2650,"glassLeftMM":100,"sensL":20,"sensC":52,"sensR":82,"pairGapMM":100,"gapCross":2,"maxGlassW":96,"covMargin":1}; /*@@BAKED_PARAMS@@*/
 applyParams(BAKED_PARAMS);
 try { applyParams(JSON.parse(localStorage.getItem(PARAM_KEY) || 'null')); } catch(e) {}
 /* every parameter edit is also kept in this browser right away (like the layout); the last Save is still the "saved" reference */
 const WORK_P_KEY = 'fcsim.params.work', SAVED_P0 = {...P};
 try { applyParams(JSON.parse(localStorage.getItem(WORK_P_KEY) || 'null')); } catch(e) {}
+/* ['h', group title, tab] then the rows of that group; tab 'none' = edited elsewhere (the across-width editor), kept for save / reset.
+   "Name (unit, hint)" labels show as name · hint · unit. PSCALE: stored in inch, shown / typed in mm. */
 const PARAM_UI = [
-  ['h','Speeds & encoders'],
-  ['vBaseMM','Base speed (mm/s)'],['vHighMM','High speed (mm/s)'],['slowRes','Slow pulse (in)'],['highRes','High pulse (in)'],['rampS','Base↔High ramp (s)'],
-  ['h','Siemens speed-up logic'],
-  ['accelPulses','Speed-up reference A (slow p) · DB offline 150'],['aTopCtr2','Top counter 2: A hard-coded in FC1 (slow p)'],
-  ['batchLimit','Merge if 1st sheet ≤ (slow p)'],['gapLimit','Wait for next sheet (slow p)'],['maxSheets','Max sheets merged'],['chargeLong','Charge Too Long > (slow p) · DB offline 450'],
-  ['cmdDelayS','Speed-up command delay T20/T40 (s)'],
-  ['runUpPulses','Run-up: high p needed'],['runUpBaseS','Run-up time base T12 (s)'],['runUpTopS','Run-up time top T32 (s)'],['retardS','Retardation time T13 (s)'],
-  ['gsBasis','Gₛ unit',[['slow','Slow pulses (confirmed)'],['high','L/0.265 (workbook tables)']]],
-  ['siemensEntry','Siemens entry sensor',[['left','Entry-LEFT pair'],['any','Any section']]],
-  ['h','In-room timer (per room) — batch = one big sheet'],
-  ['tTopStart','Top: start',[['inletOff','Inlet falling edge (tail leaves Inlet)'],['inletOn','Inlet rising edge (front reaches Inlet)']]],
-  ['tTopStop','Top: stop',[['exitOn','Exit rising edge (front reaches Exit)'],['exitOff','Exit falling edge (tail leaves Exit)']]],
-  ['tBaseStart','Base: start',[['inletOff','Inlet falling edge (tail leaves Inlet)'],['inletOn','Inlet rising edge (front reaches Inlet)']]],
-  ['tBaseStop','Base: stop',[['exitOn','Exit rising edge (front reaches Exit)'],['exitOff','Exit falling edge (tail leaves Exit)']]],
-  ['h','Glass physics'],
-  ['mixDrive','Glass on 2-speed AND chain at once follows',[['room','2-speed element (belt / INV)'],['base','Chain conveyor'],['more','Whichever it touches over a longer length']]],
-  ['h','Mitsubishi layer (only when enabled)'],
-  ['tolPulses','Length tolerance ± (slow p)'],['timerLimit','Speed-up limit Inlet→Exit (s)'],['timerDebounce','Timer edge OFF-delay (s)'],['laneTol','Lane mismatch allowance (in)'],
-  ['h','Across the line'],
-  ['rollerWidthMM','Roller width (mm)'],['glassLeftMM','Glass left edge from roller left edge (mm, ≈)'],
-  ['sensRef','Sensor positions typed in Sensors tab from',[['glass','Glass left edge (in)'],['roller','Roller left edge (mm)']]],
-  ['sensL','Sensor L (right one of pair) from glass left edge (in)'],['sensC','Sensor C (right one of pair) from glass left edge (in)'],['sensR','Sensor R (right one of pair) from glass left edge (in)'],
-  ['pairGapMM','Gap between the 2 sensors of a pair (mm)'],['gapCross','Gap between sheets across (in, ≤ fits 96 in)'],['maxGlassW','Max glass width (in)'],['covMargin','Sensor needs glass this far past beam (in) *']
+  ['h','Width across the line — both rooms','rows'],
+  ['rollerWidthMM','Rollers (mm)'],['beltWidthMM','Belt (mm, same centre line)'],
+  ['h','Detection','sens'],
+  ['covMargin','Glass needed past the beam (mm) *'],
+  ['h','Sensor position across','none'],
+  ['glassLeftMM','Glass left edge from roller left edge (mm)'],['sensRef','Sensor positions typed from',[['glass','Glass left edge'],['roller','Roller left edge']]],
+  ['sensL','Sensor L (in)'],['sensC','Sensor C (in)'],['sensR','Sensor R (in)'],['pairGapMM','Gap in a pair (mm)'],
+  ['h','Conveyor speed','motion'],
+  ['vBaseMM','Base (mm/s)'],['vHighMM','High (mm/s)'],['rampS','Base ↔ high ramp (s)'],
+  ['h','Glass','motion'],
+  ['maxGlassW','Max glass width (in)'],['gapCross','Gap between sheets across (mm)'],
+  ['mixDrive','Glass on belt + chain moves at',[['more','Whichever it touches more'],['room','Belt / INV speed'],['base','Chain speed (base)']]],
+  ['h','Encoders','plc'],
+  ['slowRes','Slow pulse (mm/p)'],['highRes','High pulse (mm/p)'],
+  ['gsBasis','Gₛ unit',[['slow','Slow pulses (confirmed)'],['high','L / high pulse (workbook)']]],
+  ['h','Siemens speed-up','plc'],
+  ['accelPulses','Speed-up point A (slow p, DB offline 150)'],['aTopCtr2','Top counter 2 A (slow p, hard-coded in FC1)'],
+  ['batchLimit','Merge if 1st sheet ≤ (slow p)'],['gapLimit','Wait for next sheet (slow p)'],['maxSheets','Max sheets merged'],['chargeLong','Charge too long > (slow p, DB offline 450)'],
+  ['cmdDelayS','Speed-up command delay (s, T20 / T40)'],
+  ['runUpPulses','Run-up needs (high p)'],['runUpBaseS','Run-up time Base (s, T12)'],['runUpTopS','Run-up time Top (s, T32)'],['retardS','Retardation time (s, T13)'],
+  ['siemensEntry','Entry sensor used',[['left','Entry LEFT pair'],['any','Any section']]],
+  ['h','In-room timer — batch = one big sheet','plc'],
+  ['tTopStart','Top: start',[['inletOff','Inlet ↓ (tail leaves)'],['inletOn','Inlet ↑ (front arrives)']]],
+  ['tTopStop','Top: stop',[['exitOn','Exit ↑ (front arrives)'],['exitOff','Exit ↓ (tail leaves)']]],
+  ['tBaseStart','Base: start',[['inletOff','Inlet ↓ (tail leaves)'],['inletOn','Inlet ↑ (front arrives)']]],
+  ['tBaseStop','Base: stop',[['exitOn','Exit ↑ (front arrives)'],['exitOff','Exit ↓ (tail leaves)']]],
+  ['h','Mitsubishi layer — only when enabled','plc'],
+  ['tolPulses','Length tolerance ± (slow p)'],['timerLimit','Speed-up limit Inlet → Exit (s)'],['timerDebounce','Timer edge OFF-delay (s)'],['laneTol','Lane mismatch allowance (mm)']
 ];
+const PSCALE = { slowRes:IN2MM, highRes:IN2MM, laneTol:IN2MM, gapCross:IN2MM, covMargin:IN2MM };
+const pShow = k => PSCALE[k] ? +(P[k]*PSCALE[k]).toFixed(4) : P[k];
+const pTake = (k, raw) => PSCALE[k] && String(raw).trim()!=='' && isFinite(+raw) ? +raw/PSCALE[k] : raw;
 /* sim defaults the line has not confirmed yet → item numbers in info/PLC_online_checklist.csv (MIRROR-Line-Logic.md §0) */
 const UNCONF = { accelPulses:'#1–4', aTopCtr2:'#1–4', chargeLong:'#11–12', runUpBaseS:'#23', vBaseMM:'#51–53', vHighMM:'#51–53', rampS:'#51–53',
   siemensEntry:'#54–55', slowRes:'#56–57', highRes:'#56–57' };
@@ -935,6 +977,7 @@ const R = {}; let HMI = {};
 /* lateral coordinate y (inch): 0 = roller centre line, negative = LEFT side (facing flow) */
 const SEC = ['LEFT','CENTER','RIGHT'], SECY = {}, POS = ['ENTRY','INLET','EXIT'], SENS_K = ['sensL','sensC','sensR'];
 const RWin = () => P.rollerWidthMM*MM2IN, HW = () => RWin()/2;
+const BHW = () => P.beltWidthMM*MM2IN/2, HWmax = () => Math.max(HW(), BHW());   // belt half-width; drawing extent = the wider of the two
 const glassRef = () => P.glassLeftMM*MM2IN - HW();     // y of the glass left loading reference
 const sensY = (sc, ab) => ab==='B' ? SECY[sc] : SECY[sc] - P.pairGapMM*MM2IN;   // B = right sensor at the stated distance
 function updateSECY(){ const g0 = glassRef(); SECY.LEFT = g0 + P.sensL; SECY.CENTER = g0 + P.sensC; SECY.RIGHT = g0 + P.sensR; }
@@ -1380,7 +1423,7 @@ function fit(canvas, h){
 }
 /* plan views: stretched across the line to fill the box, or true 1:1 scale (box height follows the width) */
 let trueScale = true; try { trueScale = localStorage.getItem('fcsim.trueScale')!=='0'; } catch(e) {}
-const viewH = (W0, x0, x1, pad, fill) => trueScale ? Math.max(150, pad + (2*HW()+10)*W0/(x1-x0)) : fill;
+const viewH = (W0, x0, x1, pad, fill) => trueScale ? Math.max(150, pad + (2*HWmax()+10)*W0/(x1-x0)) : fill;
 function syncScaleBtn(){ const b = $('#scaleBtn'); b.textContent = trueScale ? '1:1 true scale · click to stretch ↕' : '↕ stretched · click for 1:1'; b.classList.toggle('lit', trueScale);
   b.title = trueScale ? 'Drawn to scale — click to stretch across the line' : 'Across-line direction is stretched — click for true 1:1 scale'; }
 function draw(){
@@ -1388,7 +1431,7 @@ function draw(){
   const W0 = cv.clientWidth, Hh = viewH(W0, x0, x1, 90, Math.max(264, Math.min(454, W0*0.40)));
   const {w,h,dpr} = fit(cv, Hh); ctx.setTransform(dpr,0,0,dpr,0,0);
   const sx = w/(x1-x0);
-  const HH = HW(), top = 60, bot = h-30, sy = trueScale ? sx : (bot-top)/(2*HH+10);   // top row (y 14) = speed / stop status, clear of the sensor labels
+  const HH = HWmax(), top = 60, bot = h-30, sy = trueScale ? sx : (bot-top)/(2*HH+10);   // top row (y 14) = speed / stop status, clear of the sensor labels
   const X = x => (x-x0)*sx, Y = y => top + (y+HH+5)*sy;
   VIEW = {x0, sx};
   ctx.clearRect(0,0,w,h); ctx.fillStyle = C.canvas; ctx.fillRect(0,0,w,h);
@@ -1403,7 +1446,7 @@ function draw(){
     ctx.fillStyle = C.room; ctx.textAlign='center'; ctx.fillText(lbl, lx, Y(-HH-3)-8);
   }
 
-  const yA = Y(-HH), yB = Y(HH);
+  const yA = Y(-HW()), yB = Y(HW()), bA = Y(-BHW()), bB = Y(BHW());
   for (const r of g.rollers){   // rotating = scrolling stripes (speed ∝ surface speed) + base/high outline; static = faded, plain
     const xa = X(r.a), rw = Math.max(2, X(r.b)-xa), spin = (r.v||0) > 1e-3;
     ctx.globalAlpha = spin ? 1 : 0.45; ctx.fillStyle = C[TYPES[r.type].col]; ctx.fillRect(xa, yA, rw, yB-yA); ctx.globalAlpha = 1;
@@ -1416,11 +1459,11 @@ function draw(){
     ctx.strokeStyle = r.v > (g.vB+g.vH)/2 ? C.high : C.base; ctx.lineWidth = 1.5; ctx.strokeRect(xa - .75, yA - .75, rw + 1.5, yB - yA + 1.5);
   }
   for (const b of g.belts){
-    ctx.fillStyle = C.belt; ctx.fillRect(X(b.a), yA, X(b.b)-X(b.a), yB-yA);
-    ctx.save(); ctx.beginPath(); ctx.rect(X(b.a), yA, X(b.b)-X(b.a), yB-yA); ctx.clip();
+    ctx.fillStyle = C.belt; ctx.fillRect(X(b.a), bA, X(b.b)-X(b.a), bB-bA);
+    ctx.save(); ctx.beginPath(); ctx.rect(X(b.a), bA, X(b.b)-X(b.a), bB-bA); ctx.clip();
     ctx.strokeStyle = C.beltDark; ctx.lineWidth = 1;
     const off = S.beltPos % 12;
-    for (let x = b.a-12+off; x < b.b+12; x += 12){ ctx.beginPath(); ctx.moveTo(X(x), yA); ctx.lineTo(X(x), yB); ctx.stroke(); }
+    for (let x = b.a-12+off; x < b.b+12; x += 12){ ctx.beginPath(); ctx.moveTo(X(x), bA); ctx.lineTo(X(x), bB); ctx.stroke(); }
     ctx.restore();
   }
   const vline = (x, col, label, dash=[4,4], yl=top-26) => {
@@ -1581,12 +1624,12 @@ function drawPreview(){
   const W0 = pv.clientWidth; if (!W0) return;
   const x0 = G.viewX0, x1 = Math.max(G.exit, G.wallOut, ...G.rollers.map(r=>r.b)) + 12;
   const full = viewH(W0, x0, x1, 108, Math.max(260, Math.min(400, W0*0.32)));
-  const {w,h,dpr} = fit(pv, Math.round(Math.min(full, clamp(innerHeight*0.27, 200, 250)))); pctx.setTransform(dpr,0,0,dpr,0,0);   // kept thin: it stays pinned while the tabs scroll
+  const {w,h,dpr} = fit(pv, Math.round(Math.min(full, clamp(innerHeight*0.38, 260, 360)))); pctx.setTransform(dpr,0,0,dpr,0,0);   // it stays pinned while the tabs scroll, so capped at ~38% of the window
   const c = pctx, g = G, T = pvSize(), p = predict(T), on = pvOn(T), front = pvFront*MM2IN, sheets = pvSheets(T, front);
   const sx = w/(x1-x0);
-  const HH = HW(), top = 62, bot = h-46, sy = trueScale ? Math.min(sx, (bot-top)/(2*HH+10)) : (bot-top)/(2*HH+10);   // compact: across squeezed to fit
+  const HH = HWmax(), top = 62, bot = h-46, sy = trueScale ? Math.min(sx, (bot-top)/(2*HH+10)) : (bot-top)/(2*HH+10);   // compact: across squeezed to fit
   const X = x => (x-x0)*sx, Y = y => top + (y+HH+5)*sy;
-  PV_VIEW = {x0, sx};
+  PV_VIEW = {x0, sx, sy, top, bot, HH};
   c.clearRect(0,0,w,h); c.fillStyle = C.canvas; c.fillRect(0,0,w,h);
   c.font = '600 10px IBM Plex Mono, monospace'; c.textBaseline = 'middle';
 
@@ -1595,11 +1638,16 @@ function drawPreview(){
   c.fillStyle = C.room; c.textAlign = 'center';
   c.fillText((room==='top'?'TOP':'BASE')+' PAINT ROOM', X((g.wallIn+g.wallOut)/2), Y(-HH-3)-8);
 
-  const yA = Y(-HH), yB = Y(HH);
+  const yA = Y(-HW()), yB = Y(HW()), bA = Y(-BHW()), bB = Y(BHW());
   for (const r of g.rollers){ c.fillStyle = C[TYPES[r.type].col]; const xa = X(r.a); c.fillRect(xa, yA, Math.max(2, X(r.b)-xa), yB-yA); }
-  for (const b of g.belts){ c.fillStyle = C.belt; c.fillRect(X(b.a), yA, X(b.b)-X(b.a), yB-yA); }
+  for (const b of g.belts){ c.fillStyle = C.belt; c.fillRect(X(b.a), bA, X(b.b)-X(b.a), bB-bA); }
   c.font = '500 9.5px IBM Plex Mono, monospace'; c.fillStyle = C.muted; c.textAlign = 'center';
-  positions(LAYOUT[room]).forEach(([a,b],i) => { if (X(b*MM2IN) - X(a*MM2IN) >= 16) c.fillText('#'+(i+1), X((a+b)/2*MM2IN), yB+9); });
+  // label every row whose text has room; on overlap the wider row keeps its label
+  const rowLbls = positions(LAYOUT[room]).map(([a,b],i) => { const t = '#'+(i+1), x = X((a+b)/2*MM2IN), hw = c.measureText(t).width/2 + 3;
+    return {t, x, l: x-hw, r: x+hw, w: X(b*MM2IN) - X(a*MM2IN)}; });
+  const shown = [];
+  [...rowLbls].sort((p,q) => q.w - p.w).forEach(L => { if (!shown.some(s => L.l < s.r && L.r > s.l)) shown.push(L); });
+  shown.forEach(L => c.fillText(L.t, L.x, Y(HH)+9));
 
   const vline = (x, col, label, dash, yl) => {
     c.strokeStyle = col; c.lineWidth = 1; c.setLineDash(dash);
@@ -1610,7 +1658,7 @@ function drawPreview(){
   };
   c.font = '600 10px IBM Plex Mono, monospace';
   const cx = X(g.curtain);
-  c.fillStyle = paintCol(); c.globalAlpha = .9; c.fillRect(cx - 2, yA, 4, yB-yA); c.globalAlpha = 1;
+  c.fillStyle = paintCol(); c.globalAlpha = .9; c.fillRect(cx - 2, Y(-HH), 4, Y(HH)-Y(-HH)); c.globalAlpha = 1;
   c.textAlign = 'center'; c.fillText(`CURTAIN ${mm(g.curtain)}`, cx, top-40);
 
   /* glass */
@@ -1655,6 +1703,8 @@ function drawPreview(){
   c.font = '500 10px IBM Plex Sans, sans-serif'; c.fillStyle = C.muted;
   c.textAlign = 'left'; c.fillText('← from oven / metal dry', 6, h-8); c.textAlign = 'right'; c.fillText('to oven →', w-6, h-8);
 
+  peDraw(c, X, Y, top, bot, w);
+
   /* readout */
   const lab = s => s.split('').map(d=>['L','C','R'][d-1]).join(' ') || '—';
   const at = ps => lab(SEC.map((sc,i) => on.includes(String(i+1)) && covered(posX(ps), sensY(sc,'A')) && covered(posX(ps), sensY(sc,'B')) ? String(i+1) : '').join(''));
@@ -1671,7 +1721,157 @@ function drawPreview(){
   ].map(([k,v]) => `<div><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
   if ($('#pvInfo').innerHTML !== info) $('#pvInfo').innerHTML = info;
 }
-pv.addEventListener('click', e => { if (!PV_VIEW) return; const rect = pv.getBoundingClientRect(); pvSetPos(mm((e.clientX - rect.left)/PV_VIEW.sx + PV_VIEW.x0)); });
+/* ---------------- settings: edit on the drawing ----------------
+   drag Inlet / Exit, room walls, the L / C / R sensor pairs, rows, belt ends and the roller / belt width edges;
+   click a part for its exact values; click empty space to move the glass. Shift = 10 mm steps, Esc cancels a drag. */
+const PE = { hot:null, drag:null, mx:0, my:0 };
+const peXY = e => { const r = pv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+function peMap(){ const V = PV_VIEW; return { V, X: x => (x-V.x0)*V.sx, Y: y => V.top + (y+V.HH+5)*V.sy }; }
+function pvHit(mx, my){
+  if (!PV_VIEW) return null;
+  const {V, X, Y} = peMap(), L = LAYOUT[room], pos = positions(L), near = (a, b, d) => Math.abs(a-b) < d;
+  const xIn = mx/V.sx + V.x0;
+  for (const [i,sc] of SEC.entries()) for (const ps of POS)
+    if (near(mx, X(posX(ps)), 9) && (near(my, Y(SECY[sc]), 7) || near(my, Y(sensY(sc,'A')), 7))) return {kind:'lat', k:SENS_K[i]};
+  for (const k of ['inlet','exit']) if (near(mx, X((sensorAt(L,k,pos) ?? 0)*MM2IN), 5) && my > V.top-34 && my < V.bot+4) return {kind:'sens', k};
+  const onBelt = G.belts.some(b => xIn >= b.a && xIn <= b.b), onRow = G.zones.some(z => xIn >= z.a && xIn <= z.b);
+  for (const s of [-1, 1]){
+    if (onBelt && near(my, Y(s*BHW()), 5)) return {kind:'width', k:'beltWidthMM', s};
+    if (onRow && !onBelt && near(my, Y(s*HW()), 5)) return {kind:'width', k:'rollerWidthMM', s};
+  }
+  for (const k of ['wallIn','wallOut']) if (near(mx, X((sensorAt(L,k,pos) ?? 0)*MM2IN), 5) && my > Y(-V.HH-4) && my < Y(V.HH+4)) return {kind:'sens', k};
+  for (const [i,r] of L.rows.entries()){
+    if (r.type!=='belt' || my < Y(-BHW()) || my > Y(BHW())) continue;
+    if (near(mx, X(pos[i][1]*MM2IN), 5)) return {kind:'beltEnd', i, end:'down'};
+    if (i && near(mx, X(pos[i][0]*MM2IN), 5)) return {kind:'beltEnd', i, end:'up'};
+  }
+  const i = pos.findIndex(([a,b]) => xIn >= a*MM2IN && xIn <= b*MM2IN);
+  if (i >= 0 && Math.abs((my - V.top)/V.sy - V.HH - 5) <= (L.rows[i].type==='belt' ? BHW() : HW())) return {kind:'row', i};
+  return null;
+}
+const peIsP = h => h.kind==='lat' || h.kind==='width';
+function peLabel(h){
+  const L = LAYOUT[room], pos = positions(L), r = L.rows[h.i];
+  switch (h.kind){
+    case 'sens': return `${SENS_LBL[h.k]} ${Math.round(sensorAt(L, h.k, pos))} mm from Entry`;
+    case 'lat': { const i = SENS_K.indexOf(h.k), g = Math.round(P[h.k]*IN2MM);
+      return `${i+1} ${SEC[i]} pair · ${g} mm from glass edge · ${Math.round(P.glassLeftMM) + g} mm from roller edge`; }
+    case 'width': return `${h.k==='beltWidthMM' ? 'Belt' : 'Roller'} width ${Math.round(P[h.k])} mm`;
+    case 'beltEnd': return `#${h.i+1} belt · length ${Math.round(r.len)} mm`;
+    case 'row': return `#${h.i+1} ${TYPES[r.type].label} · ` + (h.i ? `${+L.rows[h.i-1].next} mm from #${h.i}` : `starts ${Math.round(pos[0][0])} mm`) + (r.type==='belt' ? ` · length ${Math.round(r.len)} mm` : '') + (h.i ? '' : ' · first row: fixed');
+  }
+}
+const peCursor = h => !h ? 'crosshair' : h.kind==='lat' || h.kind==='width' ? 'ns-resize' : h.kind==='row' ? (h.i ? 'grab' : 'pointer') : 'ew-resize';
+/* outline of the part under the mouse / being dragged + its value next to the pointer */
+function peDraw(c, X, Y, top, bot, w){
+  const h = PE.drag && PE.drag.h ? PE.drag.h : PE.hot; if (!h) return;
+  const L = LAYOUT[room], pos = positions(L);
+  c.save(); c.strokeStyle = C.high; c.lineWidth = 2.5; c.setLineDash([]);
+  if (h.kind==='sens'){ const x = X(sensorAt(L, h.k, pos)*MM2IN); c.beginPath(); c.moveTo(x, top-34); c.lineTo(x, bot+4); c.stroke(); }
+  else if (h.kind==='lat'){ const sc = SEC[SENS_K.indexOf(h.k)], y0 = Y(sensY(sc,'A')), y1 = Y(SECY[sc]);
+    for (const ps of POS) c.strokeRect(X(posX(ps)) - 9, Math.min(y0,y1) - 7, 18, Math.abs(y1-y0) + 14); }
+  else if (h.kind==='width'){ const y = Y(h.s*(h.k==='beltWidthMM' ? BHW() : HW())); c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+  else if (h.kind==='beltEnd'){ const x = X(pos[h.i][h.end==='down' ? 1 : 0]*MM2IN); c.beginPath(); c.moveTo(x, Y(-BHW()) - 6); c.lineTo(x, Y(BHW()) + 6); c.stroke(); }
+  else { const [a,b] = pos[h.i], hw = L.rows[h.i].type==='belt' ? BHW() : HW(); c.strokeRect(X(a*MM2IN), Y(-hw), X(b*MM2IN) - X(a*MM2IN), Y(hw) - Y(-hw)); }
+  c.font = '600 11px IBM Plex Mono, monospace'; c.textBaseline = 'middle';
+  const txt = peLabel(h), tw = c.measureText(txt).width, lx = clamp(PE.mx + 14, 4, w - tw - 12), ly = Math.max(12, PE.my - 16);
+  c.fillStyle = C.ink; c.fillRect(lx, ly - 10, tw + 10, 20); c.fillStyle = C.panel; c.textAlign = 'left'; c.fillText(txt, lx + 5, ly);
+  c.restore();
+}
+/* a drag always starts from the values at pointer-down, so the result never drifts */
+function peApply(d, mx, my, step){
+  const L = LAYOUT[room], dmm = (mx - d.mx)/d.sx*IN2MM, dyIn = (my - d.my)/d.sy, h = d.h, rnd = v => step ? Math.round(v/10)*10 : Math.round(v);
+  if (h.kind==='sens') L.sensors[h.k].off = rnd(+d.sensors[h.k].off + dmm);
+  else if (h.kind==='lat') P[h.k] = clamp(rnd(d.p[h.k]*IN2MM + dyIn*IN2MM), -400*IN2MM, 400*IN2MM)/IN2MM;
+  else if (h.kind==='width') P[h.k] = clamp(rnd(d.p[h.k] + h.s*2*dyIn*IN2MM), 100, 10000);
+  else if (h.kind==='beltEnd'){ const r = L.rows[h.i], len0 = +d.rows[h.i].len;
+    if (h.end==='down') r.len = Math.max(10, rnd(len0 + dmm));
+    else { const dd = Math.min(rnd(dmm), len0 - 10); L.rows[h.i-1].next = +d.rows[h.i-1].next + dd; r.len = len0 - dd; } }
+  else if (h.kind==='row' && h.i) L.rows[h.i-1].next = rnd(+d.rows[h.i-1].next + dmm);
+  if (peIsP(h)) updateSECY();
+  G = geom();
+}
+function peRestore(d){ const L = LAYOUT[room]; L.rows = JSON.parse(JSON.stringify(d.rows)); L.sensors = JSON.parse(JSON.stringify(d.sensors)); Object.assign(P, d.p); updateSECY(); G = geom(); }
+const peFixed = h => h.kind==='row' && !h.i;   // the first row has no row before it to measure from
+pv.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || !PV_VIEW) return;
+  peClose(); [PE.mx, PE.my] = peXY(e);
+  const h = pvHit(PE.mx, PE.my), L = LAYOUT[room];
+  PE.drag = { h, mx:PE.mx, my:PE.my, sx:PV_VIEW.sx, sy:PV_VIEW.sy, moved:false,
+    rows: JSON.parse(JSON.stringify(L.rows)), sensors: JSON.parse(JSON.stringify(L.sensors)), p: {...P} };
+  pv.setPointerCapture(e.pointerId);
+  if (h && h.kind==='row' && h.i) pv.style.cursor = 'grabbing';
+});
+pv.addEventListener('pointermove', e => {
+  [PE.mx, PE.my] = peXY(e);
+  const d = PE.drag;
+  if (!d){ PE.hot = pvHit(PE.mx, PE.my); pv.style.cursor = peCursor(PE.hot); return; }
+  if (d.cancelled || !d.moved && Math.hypot(PE.mx - d.mx, PE.my - d.my) < 4) return;
+  d.moved = true;
+  if (!d.h) pvSetPos(mm(PE.mx/PV_VIEW.sx + PV_VIEW.x0));   // dragging on empty space slides the glass
+  else if (!peFixed(d.h)) peApply(d, PE.mx, PE.my, e.shiftKey);
+});
+pv.addEventListener('pointerup', () => {
+  const d = PE.drag; PE.drag = null; if (!d || d.cancelled) return;
+  if (!d.h) pvSetPos(mm(PE.mx/PV_VIEW.sx + PV_VIEW.x0));
+  else if (!d.moved) peOpen(d.h, PE.mx, PE.my);
+  else if (!peFixed(d.h)) peIsP(d.h) ? paramsChanged() : layoutChanged();
+  PE.hot = pvHit(PE.mx, PE.my); pv.style.cursor = peCursor(PE.hot);
+});
+pv.addEventListener('pointerleave', () => { if (!PE.drag) PE.hot = null; });
+document.addEventListener('keydown', e => {   // capture: Esc here must not also close the Settings page
+  if (e.key!=='Escape') return;
+  if (PE.drag && PE.drag.moved && PE.drag.h){ peRestore(PE.drag); PE.drag.cancelled = true; e.stopImmediatePropagation(); return; }
+  if (!$('#pvPop').hidden){ peClose(); e.stopImmediatePropagation(); }
+}, true);
+/* click a part → small box with its exact values (mm) */
+function peFields(h){
+  const L = LAYOUT[room], pos = () => positions(L), r = L.rows[h.i];
+  const lay = (label, get, set) => ({label, get, set: v => { set(v); layoutChanged(); }});
+  const par = (label, get, set) => ({label, get, set});
+  switch (h.kind){
+    case 'sens': return [SENS_LBL[h.k], [lay('Position (mm from Entry)', () => Math.round(sensorAt(L, h.k, pos())), v => { L.sensors[h.k].off = Math.round(+L.sensors[h.k].off + v - sensorAt(L, h.k, pos())); })]];
+    case 'lat': { const i = SENS_K.indexOf(h.k);
+      return [`${i+1} ${SEC[i]} sensor pair (right sensor)`, [
+        par('From glass left edge (mm)', () => Math.round(P[h.k]*IN2MM), v => setParam(h.k, v/IN2MM)),
+        par('From roller left edge (mm)', () => Math.round(P.glassLeftMM + P[h.k]*IN2MM), v => setParam(h.k, (v - P.glassLeftMM)/IN2MM)),
+        par('Gap between the 2 sensors (mm)', () => P.pairGapMM, v => setParam('pairGapMM', v))]]; }
+    case 'width': return [h.k==='beltWidthMM' ? 'Belt (canvas)' : 'Rollers', [par('Width (mm)', () => P[h.k], v => setParam(h.k, v))]];
+    case 'beltEnd': case 'row': {
+      const f = [];
+      // distance from the row before = its "② To next row" (centre of its last roller → centre of this row's first roller; a belt counts from its edge)
+      if (h.i){ const p = L.rows[h.i-1];
+        f.push(lay(`From #${h.i} ${TYPES[p.type].label} (mm)`, () => +p.next, v => { p.next = Math.round(v*10)/10; }));
+        f[0].tip = `Centre of the last ${p.type==='belt' ? 'belt edge' : 'roller'} of #${h.i} → ${r.type==='belt' ? 'edge of this belt' : 'centre of the first roller of this row'}`; }
+      else f.push(lay('Starts at (mm from Entry)', () => Math.round(pos()[0][0]), v => { L.sensors.entry.off = Math.round(+L.sensors.entry.off + pos()[0][0] - v); }));   // first row: move Entry instead
+      if (r.type==='belt') f.push(lay('Length (mm)', () => r.len, v => { r.len = Math.max(10, Math.round(v)); }));
+      else f.push(lay('Qty (pcs)', () => r.qty, v => { r.qty = Math.max(1, Math.round(v)); }), lay('Ø (mm)', () => r.dia, v => { r.dia = Math.max(1, v); }), lay('Pitch (mm)', () => r.pitch, v => { r.pitch = Math.max(0, v); }));
+      if (h.i) f.push({label:'Starts at (mm from Entry)', get: () => Math.round(pos()[h.i][0]), ro:true});
+      return [`#${h.i+1} ${TYPES[r.type].label}${h.i ? '' : ' (first row)'}`, f];
+    }
+  }
+}
+let PE_OPEN = null;
+function peOpen(h, mx, my){
+  const [title, fields] = peFields(h), box = $('#pvPop'); PE_OPEN = {h, fields};
+  box.innerHTML = `<div class="pt"><b>${title}</b><button type="button" class="x" title="Close (Esc)">✕</button></div>`
+    + fields.map((f, j) => f.ro ? `<div class="ro"><span>${f.label}</span><span class="mono" data-j="${j}">${f.get()}</span></div>`
+      : `<label${f.tip ? ` title="${f.tip}"` : ''}><span>${f.label}</span><input type="number" step="any" data-j="${j}" value="${f.get()}"></label>`).join('');
+  box.hidden = false;
+  const host = pv.parentElement.getBoundingClientRect(), bw = box.offsetWidth, bh = box.offsetHeight;
+  box.style.left = clamp(mx + 12, 4, host.width - bw - 4) + 'px';
+  box.style.top = clamp(my + pv.offsetTop - bh/2, 4, Math.max(4, host.height - bh - 4)) + 'px';
+  const first = box.querySelector('input'); if (first){ first.focus(); first.select(); }
+}
+function peClose(){ $('#pvPop').hidden = true; PE_OPEN = null; }
+$('#pvPop').addEventListener('change', e => { const j = e.target.dataset.j; if (j==null || !PE_OPEN) return;
+  const v = +e.target.value;
+  if (String(e.target.value).trim()==='' || !isFinite(v)) toast('Enter a number', 'err'); else PE_OPEN.fields[j].set(v);
+  $('#pvPop').querySelectorAll('[data-j]').forEach(el => { const v = PE_OPEN.fields[el.dataset.j].get(); if (el.tagName==='INPUT') el.value = v; else el.textContent = v; }); });
+$('#pvPop').addEventListener('keydown', e => { if (e.key==='Enter') e.target.blur(); });
+$('#pvPop').addEventListener('click', e => { if (e.target.closest('.x')) peClose(); });
+$('#undoBtn').addEventListener('click', () => histGo(true)); $('#redoBtn').addEventListener('click', () => histGo(false));
+document.addEventListener('pointerdown', e => { if (!$('#pvPop').hidden && !e.target.closest('#pvPop') && e.target !== pv) peClose(); });
 cv.addEventListener('mousemove', e => {
   if (!VIEW) return;
   const rect = cv.getBoundingClientRect(), xIn = (e.clientX - rect.left)/VIEW.sx + VIEW.x0, xm = mm(xIn);
@@ -1736,7 +1936,7 @@ function renderKR(T, p){
   setHTML($('#kr'), html);
   const n = paramDiff().length;
   const foot = (b ? `Δ = now − baseline pinned ${bl.at.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}. ` : 'Pin a baseline, then change parameters or the layout in Settings to see the difference. ') +
-    (n ? `<b>${n}</b> ${n>1 ? 'parameters differ' : 'parameter differs'} from factory · <button class="lnk" data-go="params">open Parameters</button>` : 'Parameters are at factory values.');
+    (n ? `<b>${n}</b> ${n>1 ? 'parameters differ' : 'parameter differs'} from factory · <button class="lnk" data-go="plc">open Settings</button>` : 'Parameters are at factory values.');
   setHTML($('#krFoot'), foot);
   $('#blClr').hidden = !b; $('#blPin').textContent = b ? 'Re-pin' : 'Pin as baseline';
 }
@@ -1744,7 +1944,7 @@ function renderKR(T, p){
 /* fault banner: why the line stopped, when, and what to do next */
 function faultInfo(){
   const e = S.log.find(x => x.level==='HARD'), m = e ? e.msg : '';
-  const hint = /^CHARGE TOO LONG/.test(m) ? `The load is longer than Charge Too Long (${P.chargeLong} slow p). Pick a shorter size, or check the value in Settings → Parameters.`
+  const hint = /^CHARGE TOO LONG/.test(m) ? `The load is longer than Charge Too Long (${P.chargeLong} slow p). Pick a shorter size, or check the value in Settings → PLC logic.`
     : /^RUN-UP FAULT/.test(m) ? 'The room did not reach high speed in time. If you injected "VFD no run-up" or "High encoder dead", clear it first.'
     : /^RETARDATION FAULT/.test(m) ? 'The room stayed at high speed after the base command. If you injected "VFD stuck high", clear it first.'
     : /EMERGENCY STOP/.test(m) ? 'E-STOP was pressed. Restart the line when it is safe.'
@@ -1855,20 +2055,41 @@ function buildLayoutEditor(){
       <td class="l"><select data-s="${k}" data-f="edge"><option value="up" ${sp.edge==='up'?'selected':''}>upstream edge</option><option value="down" ${sp.edge==='down'?'selected':''}>downstream edge</option></select></td>
       <td><input type="number" step="any" data-s="${k}" data-f="off" value="${sp.off}" style="width:90px"></td><td>${at==null?'—':Math.round(at)}</td></tr>`;
   }).join('');
-  $('#layPts').innerHTML = `<div class="f">Curtain (mm from Entry)<div class="mono" style="margin-top:4px">${mm(G.curtain)} · centre of the belt gap (automatic)</div></div>`;
-  // sensor pairs are stored as inch from the glass left edge; "roller" shows / takes them as mm from the roller left edge
-  const fromRoller = P.sensRef==='roller', ref = fromRoller ? 'from roller left edge (mm)' : 'from glass left edge (in)';
-  const sv = k => fromRoller ? +(P.glassLeftMM + P[k]*IN2MM).toFixed(1) : P[k];
+  // sensor pairs are stored as inch from the glass left edge; shown / typed here in mm (from the glass or the roller left edge)
+  const fromRoller = P.sensRef==='roller', ref = fromRoller ? 'from roller left edge (mm)' : 'from glass left edge (mm)';
+  const sv = k => +((fromRoller ? P.glassLeftMM : 0) + P[k]*IN2MM).toFixed(1);
   const inp = k => `<input type="number" step="any" data-pp="${k}" value="${SENS_K.includes(k) ? sv(k) : P[k]}">`;
   $('#layWidth').innerHTML =
-    `<label class="f">Roller left edge → glass left edge (mm)${inp('glassLeftMM')}</label>`
-    + `<label class="f">Sensor distance measured from<select data-pp="sensRef"><option value="glass" ${fromRoller?'':'selected'}>Glass left edge (in)</option><option value="roller" ${fromRoller?'selected':''}>Roller left edge (mm)</option></select></label>`
-    + [['sensL','1 LEFT pair'],['sensC','2 CENTER pair'],['sensR','3 RIGHT pair']].map(([k,l]) => `<label class="f">${l} — ${ref}${inp(k)}</label>`).join('')
-    + `<label class="f">Gap between the 2 sensors of a pair (mm)${inp('pairGapMM')}</label>`
-    + `<div class="f" style="grid-column:1/-1">Right sensor of each pair: ${SENS_K.map((k,i) => `<span class="mono">${SEC[i][0]} ${f1(P[k])} in from glass = ${Math.round(P.glassLeftMM + P[k]*IN2MM)} mm from roller</span>`).join(' · ')} · glass left edge ${Math.round(P.glassLeftMM)} mm from roller left edge</div>`;
+    `<label class="f">Glass left edge from roller edge${inp('glassLeftMM')}</label>`
+    + `<label class="f">Sensors measured from<select data-pp="sensRef"><option value="glass" ${fromRoller?'':'selected'}>Glass left edge</option><option value="roller" ${fromRoller?'selected':''}>Roller left edge</option></select></label>`
+    + [['sensL','1 LEFT pair'],['sensC','2 CENTER pair'],['sensR','3 RIGHT pair']].map(([k,l]) => `<label class="f" title="Right sensor of the pair, ${ref}">${l}${inp(k)}</label>`).join('')
+    + `<label class="f" title="Distance between the 2 sensors of a pair">Gap in a pair${inp('pairGapMM')}</label>`;
   markUnsaved();
 }
-function layoutChanged(){ saveLayout(); markEdited(); G = geom(); buildLayoutEditor(); setDirty(true); }
+function layoutChanged(){ saveLayout(); markEdited(); G = geom(); buildLayoutEditor(); setDirty(true); histPush(); }
+/* undo / redo for every layout & parameter edit (both rooms): one snapshot per change · Ctrl+Z / Ctrl+Y on the Settings page */
+const UNDO = { undo:[], redo:[], cur:null, busy:false };
+const histSnap = () => JSON.stringify({L:LAYOUT, P:paramsObj()});
+function histPush(){
+  if (UNDO.busy) return; const s = histSnap();
+  if (UNDO.cur===null || s===UNDO.cur){ UNDO.cur = s; return; }
+  UNDO.undo.push(UNDO.cur); if (UNDO.undo.length > 100) UNDO.undo.shift(); UNDO.redo = []; UNDO.cur = s; histBtns();
+}
+function histGo(back){
+  const from = back ? UNDO.undo : UNDO.redo, to = back ? UNDO.redo : UNDO.undo; if (!from.length) return;
+  to.push(UNDO.cur); UNDO.cur = from.pop(); const o = JSON.parse(UNDO.cur);
+  UNDO.busy = true; LAYOUT = o.L; Object.assign(P, o.P); peClose();
+  document.querySelectorAll('.pgroups [data-p]').forEach(el => { el.value = pShow(el.dataset.p); });
+  paramsChanged(); layoutChanged(); UNDO.busy = false; histBtns(); toast(back ? 'Undone' : 'Redone');
+}
+function histBtns(){ $('#undoBtn').disabled = !UNDO.undo.length; $('#redoBtn').disabled = !UNDO.redo.length;
+  $('#undoBtn').title = `Undo (Ctrl+Z) · ${UNDO.undo.length} step${UNDO.undo.length===1?'':'s'}`; }
+document.addEventListener('keydown', e => {
+  if (!(e.ctrlKey || e.metaKey) || !pageIs('settings') || e.target.closest('input, textarea, select')) return;   // in a text box Ctrl+Z stays the browser's
+  const k = e.key.toLowerCase();
+  if (k==='z' && !e.shiftKey){ e.preventDefault(); histGo(true); }
+  else if (k==='y' || k==='z' && e.shiftKey){ e.preventDefault(); histGo(false); }
+});
 /* time of the last edit not yet in the cloud (cleared when the cloud and this browser agree) — decides local vs cloud at start / back online */
 const EDIT_LS = 'fcsim.work.at';
 const markEdited = () => { try { localStorage.setItem(EDIT_LS, String(Date.now())); } catch(e) {} };
@@ -1893,7 +2114,7 @@ function markUnsaved(){
   document.querySelectorAll('#laySens [data-s]').forEach(el => { const b = B.sensors[el.dataset.s], f = el.dataset.f;
     el.classList.toggle('unsv', !b || ne(L.sensors[el.dataset.s][f], b[f])); });
   if (!SAVED_P) return;
-  document.querySelectorAll('#params [data-p], #layWidth [data-pp]').forEach(el => { const k = el.dataset.p || el.dataset.pp;
+  document.querySelectorAll('.pgroups [data-p], #layWidth [data-pp]').forEach(el => { const k = el.dataset.p || el.dataset.pp;
     el.classList.toggle('unsv', k in SAVED_P && ne(P[k], SAVED_P[k])); });
 }
 function defaultNext(r){ return r.type==='belt' ? 120 : ((+r.pitch||0) > 0 ? +r.pitch : (+r.dia||0) + 60); }
@@ -1936,10 +2157,10 @@ $('#lay').addEventListener('click', e => {
 $('#laySens').addEventListener('change', e => { const k = e.target.dataset.s, f = e.target.dataset.f; if (!k) return;
   LAYOUT[room].sensors[k][f] = f==='off' ? (+e.target.value||0) : e.target.value; layoutChanged(); });
 $('#layWidth').addEventListener('change', e => { const k = e.target.dataset.pp; if (!k) return;
-  if (k==='sensRef'){ P.sensRef = e.target.value; const el = $('#params [data-p="sensRef"]'); if (el) el.value = P.sensRef; paramsChanged(); return; }
+  if (k==='sensRef'){ P.sensRef = e.target.value; paramsChanged(); return; }
   let raw = e.target.value;
-  if (SENS_K.includes(k) && P.sensRef==='roller' && String(raw).trim()!=='' && isFinite(+raw)) raw = (+raw - P.glassLeftMM)*MM2IN;   // mm from roller → in from glass
-  if (setParam(k, raw)){ const el = $(`#params [data-p="${k}"]`); if (el) el.value = P[k]; } else buildLayoutEditor(); });
+  if (SENS_K.includes(k) && String(raw).trim()!=='' && isFinite(+raw)) raw = (+raw - (P.sensRef==='roller' ? P.glassLeftMM : 0))*MM2IN;   // mm (from roller / glass) → in from glass
+  if (!setParam(k, raw)) buildLayoutEditor(); });
 $('#layAddDown').addEventListener('click', () => { const rows = LAYOUT[room].rows;
   if (rows.length) rows[rows.length-1].next = defaultNext(rows[rows.length-1]); rows.push({id:newId(), type:'chain', qty:1, dia:63, pitch:254}); layoutChanged(); });
 $('#layAddUp').addEventListener('click', () => { const rows = LAYOUT[room].rows;
@@ -1972,7 +2193,7 @@ $('#layUndoReset').addEventListener('click', () => {
   let o = null; try { o = JSON.parse(localStorage.getItem(UNDO_KEY) || 'null'); } catch(e) {}
   if (!o || !o.layout) { undoBtn(); return; }
   LAYOUT = normLayout(o.layout); applyParams(o.params);
-  document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; });
+  document.querySelectorAll('.pgroups [data-p]').forEach(el => { el.value = pShow(el.dataset.p); });
   layoutChanged(); paramsChanged();
   defNote('Reset undone: your edits are back (not saved yet — press Save to keep them).', 'ok');
 });
@@ -1986,7 +2207,7 @@ $('#layLoadDef').addEventListener('click', () => {
   LAYOUT = normLayout(JSON.parse(JSON.stringify(d || FACTORY_CHAIN)));
   for (const [k] of PARAM_UI) if (k!=='h') P[k] = FACTORY_P[k];
   try { applyParams(JSON.parse(localStorage.getItem(PARAM_KEY) || 'null')); } catch(e) {}
-  document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; });
+  document.querySelectorAll('.pgroups [data-p]').forEach(el => { el.value = pShow(el.dataset.p); });
   layoutChanged(); paramsChanged(); setDirty(false); markSaved();
   defNote(d ? 'Reset to the saved default (both rooms + parameters).' : 'No saved default yet — drawing and factory values loaded.'); });
 /* HMI size panel: the form as typed (preset, size, loads, gaps, job change) + the size the line is running (confirmed) */
@@ -2015,7 +2236,7 @@ $('#layFile').addEventListener('change', async e => {
     try { localStorage.setItem(UNDO_KEY, JSON.stringify({ layout: LAYOUT, params: paramsObj(), at: Date.now() })); } catch(e) {}
     undoBtn();
     LAYOUT = normLayout(o);
-    if (o.params){ applyParams(o.params); document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; }); paramsChanged(); }
+    if (o.params){ applyParams(o.params); document.querySelectorAll('.pgroups [data-p]').forEach(el => { el.value = pShow(el.dataset.p); }); paramsChanged(); }
     if (o.toggles){ P.mitsu = !!o.toggles.mitsu; P.interlock = !!o.toggles.interlock; $('#mitsuOn').checked = P.mitsu; $('#ilk').checked = P.interlock; }
     applyHmi(o.hmi);
     layoutChanged(); defNote(`Imported ${f.name}: layout, parameters` + (o.hmi ? ', HMI size' : '') + ' — not the default until you press Save.', 'ok'); }
@@ -2030,29 +2251,32 @@ function buildSensorGrid(){
     log('INFO','SIM', `${F.stuck.has(k)?'Fault':'Cleared'}: sensor ${k} stuck OFF`); });
 }
 function buildParams(){
-  // one card per group; "Name (unit, hint)" labels split into name · hint · unit
-  const fac = k => { const o = PARAM_UI.find(p => p[0]===k)?.[2]; return o ? (o.find(([v]) => v===FACTORY_P[k])?.[1] ?? FACTORY_P[k]) : FACTORY_P[k]; };
+  // one card per group, placed in its tab; "Name (unit, hint)" labels split into name · hint · unit
+  const fac = k => { const o = PARAM_UI.find(p => p[0]===k)?.[2]; return o ? (o.find(([v]) => v===FACTORY_P[k])?.[1] ?? FACTORY_P[k]) : PSCALE[k] ? +(FACTORY_P[k]*PSCALE[k]).toFixed(4) : FACTORY_P[k]; };
   const rv = k => `<button type="button" class="rv" data-rv="${k}" title="Back to the factory value">reset to ${fac(k)}</button>`;
   const row = ([k,l,o]) => {
     if (o) return `<label class="prow sel"><span class="pl">${l}${uncTag(k)}${rv(k)}</span><select data-p="${k}" title="${l}">${o.map(([v,n])=>`<option value="${v}" ${P[k]===v?'selected':''}>${n}</option>`).join('')}</select></label>`;
     const m = l.match(/^(.*?)\s*\(([^()]*)\)\s*(\*?)$/), name = m ? m[1]+m[3] : l, [unit, ...hint] = m ? m[2].split(/,\s*/) : [''];
-    return `<label class="prow" title="${l}"><span class="pl">${name}${uncTag(k)}${hint.length ? `<small>${hint.join(', ')}</small>` : ''}${rv(k)}</span><span class="pi"><input type="number" step="any" data-p="${k}" value="${P[k]}"><span class="u">${unit}</span></span></label>`;
+    return `<label class="prow" title="${l}"><span class="pl">${name}${uncTag(k)}${hint.length ? `<small>${hint.join(', ')}</small>` : ''}${rv(k)}</span><span class="pi"><input type="number" step="any" data-p="${k}" value="${pShow(k)}"><span class="u">${unit}</span></span></label>`;
   };
-  const groups = []; for (const p of PARAM_UI) p[0]==='h' ? groups.push({h:p[1], rows:[]}) : groups.at(-1).rows.push(p);
-  $('#params').innerHTML = groups.map(g => { const [t, sub] = g.h.split(' — ');
-    return `<div class="card"><h2>${t}${sub ? ` <span class="r">${sub}</span>` : ''}</h2>${g.rows.map(row).join('')}</div>`; }).join('');
-  $('#params').addEventListener('change', e => { const k = e.target.dataset.p; if (!k) return;
-    if (e.target.tagName==='SELECT'){ P[k] = e.target.value; paramsChanged(); return; }
-    setParam(k, e.target.value); e.target.value = P[k]; });
-  $('#params').addEventListener('click', e => { const k = e.target.closest('[data-rv]')?.dataset.rv; if (!k) return;
-    e.preventDefault(); P[k] = FACTORY_P[k]; const el = $(`#params [data-p="${k}"]`); if (el) el.value = P[k]; paramsChanged(); });
+  const groups = []; for (const p of PARAM_UI) p[0]==='h' ? groups.push({h:p[1], tab:p[2], rows:[]}) : groups.at(-1).rows.push(p);
+  const card = g => { const [t, sub] = g.h.split(' — ');
+    return `<div class="card"><h2>${t}${sub ? ` <span class="r">${sub}</span>` : ''}</h2>${g.rows.map(row).join('')}</div>`; };
+  document.querySelectorAll('.pgroups[data-pg]').forEach(box => {
+    box.innerHTML = groups.filter(g => g.tab===box.dataset.pg).map(card).join('');
+    box.addEventListener('change', e => { const k = e.target.dataset.p; if (!k) return;
+      if (e.target.tagName==='SELECT'){ P[k] = e.target.value; paramsChanged(); return; }
+      setParam(k, pTake(k, e.target.value)); e.target.value = pShow(k); });
+    box.addEventListener('click', e => { const k = e.target.closest('[data-rv]')?.dataset.rv; if (!k) return;
+      e.preventDefault(); P[k] = FACTORY_P[k]; const el = $(`.pgroups [data-p="${k}"]`); if (el) el.value = pShow(k); paramsChanged(); });
+  });
   markParams();
 }
 /* allowed range per numeric parameter [min, max, integer]; anything not listed: 0 … 1e6 */
 const PARAM_LIM = {
   vBaseMM:[1,5000], vHighMM:[1,10000], slowRes:[0.01,10], highRes:[0.01,10], rampS:[0,30],
   maxSheets:[1,3,1], chargeLong:[1,5000,1], accelPulses:[0,5000,1], aTopCtr2:[0,5000,1], batchLimit:[0,5000,1], gapLimit:[0,5000,1], runUpPulses:[0,10000,1],
-  timerLimit:[0.1,600], rollerWidthMM:[100,10000], maxGlassW:[1,400], sensL:[-400,400], sensC:[-400,400], sensR:[-400,400], glassLeftMM:[-5000,5000]
+  timerLimit:[0.1,600], rollerWidthMM:[100,10000], beltWidthMM:[100,10000], maxGlassW:[1,400], sensL:[-400,400], sensC:[-400,400], sensR:[-400,400], glassLeftMM:[-5000,5000]
 };
 /* one numeric parameter from a text field: blank / not a number → keep the old value, out of range → clamp. true = value taken */
 function setParam(k, raw){
@@ -2066,12 +2290,12 @@ function setParam(k, raw){
 /* tint the rows that differ from the factory value and count them on the tab */
 function markParams(){
   const diff = new Set(paramDiff());
-  document.querySelectorAll('#params [data-p]').forEach(el => el.closest('.prow').classList.toggle('chg', diff.has(el.dataset.p)));
-  $('#parCnt').textContent = diff.size ? ` · ${diff.size} changed` : '';
+  document.querySelectorAll('.pgroups [data-p]').forEach(el => el.closest('.prow').classList.toggle('chg', diff.has(el.dataset.p)));
+  document.querySelectorAll('.stabs [data-cnt]').forEach(c => { const n = $(`#panel-${c.dataset.cnt}`).querySelectorAll('.prow.chg').length; c.textContent = n ? ` · ${n} changed` : ''; });
   markUnsaved();
 }
 function paramsChanged(){ updateSECY(); G = geom(); if (typeof buildLayoutEditor==='function' && $('#layWidth')) buildLayoutEditor(); $('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1); markParams(); setDirty(true);
-  try { localStorage.setItem(WORK_P_KEY, JSON.stringify(paramsObj())); } catch(e) {} markEdited(); }
+  try { localStorage.setItem(WORK_P_KEY, JSON.stringify(paramsObj())); } catch(e) {} markEdited(); histPush(); }
 
 /* ---------------- wiring ---------------- */
 let running = true, simSpeed = 2;
@@ -2361,7 +2585,7 @@ $('#themeBtn').addEventListener('click', () => { const r = document.documentElem
   r.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('fcsim.theme', r.dataset.theme); } catch(e) {}
   readColors(); paintLegend(); });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readColors(); paintLegend(); });
-document.addEventListener('keydown', e => { if (e.key==='Escape' && (pageIs('settings') || pageIs('master'))) setPage('sim'); });
+document.addEventListener('keydown', e => { if (e.key==='Escape' && pageIs('master')) setPage('sim'); });   // Settings: Esc only closes / cancels (edits on the drawing)
 let spaceTaken = false;   // the keyup half of a Space we used must not click the focused button
 document.addEventListener('keyup', e => { if (e.code==='Space' && spaceTaken){ e.preventDefault(); spaceTaken = false; } });
 /* Space = run / pause, S = step, [ ] = slower / faster. Typing in a field is never hijacked; a button reached with the
@@ -2389,7 +2613,7 @@ $('#keysOk').addEventListener('click', () => $('#keys').close());
 $('#keys').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // click on the backdrop
 $('#keysHide').addEventListener('change', e => { try { localStorage.setItem('fcsim.keysHide', e.target.checked ? '1' : '0'); } catch(err) {} });
 
-buildSensorGrid(); buildParams(); readColors(); setRoom('top'); initDefNote(); markSaved(SAVED_P0); setDirty(!!document.querySelector('.unsv'));   // setRoom also resets the room switch and accent colour
+buildSensorGrid(); buildParams(); readColors(); setRoom('top'); UNDO.cur = histSnap(); histBtns(); initDefNote(); markSaved(SAVED_P0); setDirty(!!document.querySelector('.unsv'));   // setRoom also resets the room switch and accent colour
 $('#hover').className = 'dim'; $('#hover').textContent = 'Move the mouse over the drawing to read positions';
 try { if (localStorage.getItem('fcsim.keysHide')!=='1') showKeys(); } catch(e) { showKeys(); }
 $('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1);
@@ -2444,11 +2668,11 @@ requestAnimationFrame(frame);
   /* the cloud default becomes the editor content, the saved reference and the local copy */
   function applyCloud(o){
     LAYOUT = normLayout(o.layout); saveLayout();
-    if (o.params){ applyParams(o.params); document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; }); }
+    if (o.params){ applyParams(o.params); document.querySelectorAll('.pgroups [data-p]').forEach(el => { el.value = pShow(el.dataset.p); }); }
     DEFAULT_CHAIN = JSON.parse(JSON.stringify(LAYOUT));
     try { localStorage.setItem(USER_DEF_KEY, JSON.stringify(LAYOUT)); localStorage.setItem(PARAM_KEY, JSON.stringify(paramsObj())); localStorage.setItem(WORK_P_KEY, JSON.stringify(paramsObj())); localStorage.setItem('fcsim.savedAt', String(o.updatedAt || Date.now())); } catch(e) {}
     clearEdited(); hideConflict();
-    G = geom(); buildLayoutEditor(); markParams(); setDirty(false); markSaved();
+    G = geom(); buildLayoutEditor(); markParams(); setDirty(false); markSaved(); histPush();   // undo history must start from what is now on screen
   }
   /* same data? compared with sorted keys, cloud params laid over the local ones (a key missing in the cloud is not a difference) */
   const canon = o => JSON.stringify(o, (k, v) => v && typeof v==='object' && !Array.isArray(v) ? Object.keys(v).sort().reduce((a, x) => (a[x] = v[x], a), {}) : v);
@@ -2522,7 +2746,7 @@ requestAnimationFrame(frame);
       try { localStorage.setItem(UNDO_KEY, JSON.stringify({ layout: LAYOUT, params: paramsObj(), at: Date.now() })); } catch(e) {}
       undoBtn();
       LAYOUT = normLayout(o.layout); applyParams(o.params);
-      document.querySelectorAll('#params [data-p]').forEach(el => { el.value = P[el.dataset.p]; });
+      document.querySelectorAll('.pgroups [data-p]').forEach(el => { el.value = pShow(el.dataset.p); });
       layoutChanged(); paramsChanged();
       say(`Loaded the cloud save from ${at} — not the default until you press Save.`, 'ok');
     } catch(err){ say('Could not load that save (' + err.message + ').', 'err'); }
