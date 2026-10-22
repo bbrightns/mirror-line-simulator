@@ -145,8 +145,12 @@ select option{background:var(--panel);color:var(--ink)}
 select optgroup{background:var(--panel2);color:var(--muted);font-style:normal;font-weight:600}
 select optgroup option{color:var(--ink)}
 textarea{min-height:110px;font-size:11.5px}
+label.f[hidden]{display:none}
 label.f{display:grid;grid-template-rows:1fr auto;align-items:end;gap:3px;font-size:11.5px;color:var(--muted)}
 .grid3 select,.grid3 input[type=number]{height:26px;font-size:12px;padding:2px 6px}
+.hgrp{margin-top:12px}
+svg.gico{width:9px;height:9px;margin-left:3px;vertical-align:-1px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.hgrp h3{margin:0 0 6px;padding-bottom:4px;border-bottom:1px solid var(--line);font:600 10.5px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .seg{display:inline-flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden}
 .seg button{border:0;border-radius:0;background:transparent;padding:6px 12px}
@@ -158,14 +162,15 @@ td:first-child,th:first-child,td.l,th.l{text-align:left}
 td{font-family:var(--mono)}
 th.grp{text-align:center;border-left:1px solid var(--line)} td.bl,th.bl{border-left:1px solid var(--line)}
 .tw{overflow:auto;max-height:320px}
-.sensOn{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
-.sensOn .so{display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;column-gap:6px;row-gap:0;padding:3px 4px;border-radius:6px;border:1.5px dashed var(--faint);color:var(--faint);font-family:var(--mono)}
-.sensOn .so b{font-size:14px;line-height:1.2}
+.sensOn{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--panel2)}
+.sensOn .so{display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;column-gap:5px;row-gap:0;padding:2px 4px;color:var(--faint);font-family:var(--mono);cursor:default;user-select:none;pointer-events:none}
+.sensOn .so::before{content:"";width:7px;height:7px;border-radius:50%;border:1.5px solid var(--faint);align-self:center}
+.sensOn .so b{font-size:12px;line-height:1.2}
 .sensOn .so span{display:none}
 .sensOn .so i{font-style:normal;font-size:10px;font-weight:700;letter-spacing:.06em}
-.sensOn .so.on{border:1.5px solid var(--ok);background:color-mix(in srgb, var(--ok) 16%, transparent);color:var(--ok)}
-.sensOn .so.off{opacity:.7}
-.sensOn .so em{font-style:normal;font-size:9px;letter-spacing:.04em;color:var(--warn,#e0a030);margin-top:1px}
+.sensOn .so.on{color:var(--ok)}
+.sensOn .so.on::before{background:var(--ok);border-color:var(--ok);box-shadow:0 0 5px var(--ok)}
+.sensOn .so em{font-style:normal;font-size:9px;letter-spacing:.04em;color:var(--warn,#e0a030);flex-basis:100%;text-align:center}
 .pass{color:var(--ok)} .fail{color:var(--alarm);font-weight:600} .warn{color:var(--soft)} .dim{color:var(--faint)}
 .hi{color:var(--high)} .lo{color:var(--base)}
 #log{max-height:300px;overflow:auto;font:12px/1.4 var(--mono)}
@@ -190,6 +195,8 @@ details.wide .body{padding:0 12px 12px}
 .spanel>.card+.pgroups,.spanel>.card+.card{margin-top:14px}
 .pgroups:empty{display:none}
 .pgroups .card>h2 .r{color:var(--faint)}
+.c-plan>h2{background:color-mix(in srgb, var(--roomc) 16%, transparent);border-bottom-color:color-mix(in srgb, var(--roomc) 45%, var(--line));color:var(--ink)}
+.c-plan>h2 .r{color:var(--roomc);font-weight:700}
 .prow{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:10px;align-items:center;padding:6px 12px;border-bottom:1px solid var(--line);font-size:12.5px}
 .prow:last-child{border-bottom:0}
 .prow .pl{color:var(--ink);line-height:1.35}
@@ -307,10 +314,12 @@ details.help b{color:var(--ink)}
 /* settings tabs */
 .stabs{display:flex;flex-wrap:wrap;align-items:flex-end;gap:2px;border-bottom:1px solid var(--line2);margin:0 0 14px}
 .stabs .tabl{display:flex;flex-wrap:wrap;align-items:flex-end;gap:2px}
-.stabs .cnt{font:600 11px var(--mono);color:var(--high);margin-left:4px}
-.stabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;padding:9px 14px 8px;font:600 13px var(--sans);color:var(--muted);margin-bottom:-1px}
+.stabs .cnt{position:absolute;left:0;right:0;bottom:4px;text-align:center;font:600 10.5px var(--mono);color:var(--high);white-space:nowrap}
+.stabs button{position:relative;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;padding:9px 14px 21px;font:600 13px var(--sans);color:var(--muted);margin-bottom:-1px}
 .stabs button:hover{color:var(--ink)}
 .stabs button.sel{color:var(--ink);border-bottom-color:var(--roomc)}
+.stabs button.unsv{color:var(--soft)}
+.stabs button.unsv::after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--soft);margin-left:7px;vertical-align:middle}
 .savebox{margin-left:12px;display:inline-flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0}
 .savebox button{height:28px;padding:0 16px;margin:0;font:600 13px var(--sans);background:var(--ink);color:var(--panel);border:1px solid var(--ink);border-radius:6px}
 .savebox button:hover{color:var(--panel);opacity:.88}
@@ -566,7 +575,7 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
 <main>
   <section>
     <div class="card c-plan">
-      <h2>Plan view — glass flow → <span class="row" style="gap:8px"><button class="sm lit" id="scaleBtn" title="Drawn to scale — click to stretch across the line">1:1 true scale · click to stretch ↕</button><span class="r" id="roomLbl">Top paint room</span></span></h2>
+      <h2>Plan view — glass flow → <span class="row" style="gap:8px"><span class="r" id="roomLbl">Top paint room</span></span></h2>
       <canvas id="cv" width="1481" height="411" style="height: 410.564px;" role="img" aria-label="Plan view of the Top paint room: rollers, sensors and glass moving left to right"></canvas>
       <div id="hover" class=""></div>
       <div class="legend">
@@ -609,19 +618,26 @@ body.master #mtBtn{background:var(--ink);color:var(--panel);border-color:var(--i
 
     <div class="card c-hmi"><h2>HMI size</h2><div class="pad">
       <label class="f">Size (production list)<select id="preset"></select></label>
-      <div class="sensOn" id="hmiSens" aria-live="polite"></div>
+      <div class="sensOn" id="hmiSens" title="Sensor pairs this size turns on (read-only)" aria-live="polite"></div>
       <div class="chk" id="rChk"></div>
-      <div class="grid3" style="margin-top:8px">
-        <label class="f">Sheet W (in)<input type="number" id="rW" min="6" max="96" step="1"></label>
-        <label class="f">Sheet L (in)<input type="number" id="rLen" step="0.5" min="6" max="200"></label>
+      <div class="hgrp"><h3>Sheet</h3><div class="grid3">
+        <label class="f">Width (in)<input type="number" id="rW" min="6" max="96" step="1"></label>
+        <label class="f">Length (in)<input type="number" id="rLen" step="0.5" min="6" max="200"></label>
         <label class="f">Loads (0=∞)<input type="number" id="rN" min="0" step="1"></label>
+      </div></div>
+      <div class="hgrp"><h3>Batch layout</h3><div class="grid3">
         <label class="f">Across<input type="number" id="rAcross" min="1" max="4" step="1"></label>
         <label class="f">In flow<input type="number" id="rNLen" min="1" max="4" step="1"></label>
         <label class="f">Alignment<select id="rAlign"><option value="left">Left ref</option><option value="center">Centered</option><option value="split">Split L/R</option></select></label>
-        <label class="f">Batch gap (in)<input type="number" id="rGapX" step=".5" min="0"></label>
-        <label class="f">Load gap (in)<input type="number" id="rGapY" step=".5" min="0"></label>
+      </div></div>
+      <div class="hgrp"><h3>Gaps</h3><div class="grid3">
+        <label class="f bgap"><span>Batch flow (in)<svg class="gico" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1v10M3 3.5 6 1l3 2.5M3 8.5 6 11l3-2.5"/></svg></span><input type="number" id="rGapX" step=".5" min="0"></label>
+        <label class="f bgap"><span>Batch across (in)<svg class="gico" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6h10M3.5 3 1 6l2.5 3M8.5 3 11 6l-2.5 3"/></svg></span><input type="number" id="rGapA" step=".5" min="0"></label>
+        <label class="f">Load (in)<input type="number" id="rGapY" step=".5" min="0"></label>
+      </div></div>
+      <div class="hgrp"><h3>Job</h3><div class="grid3">
         <label class="f" title="Delay when the size changes: no new glass is fed for this long after Confirm">Job change (min)<input type="number" id="rJob" step="0.5" min="0" value="1"></label>
-      </div>
+      </div></div>
       <div class="row" style="margin-top:10px"><button class="primary" id="confirmBtn" disabled="" title="Change the size first — a job change only happens when the size changes">Size unchanged</button><button id="cancelBtn" hidden title="Drop the edits and put the running size back in the form (no job change)">Cancel</button></div>
       <div class="note" id="rNote"></div>
       <details class="pred"><summary class="kr-h"><span>Predicted for this size</span></summary>
@@ -964,13 +980,13 @@ const P = {
   tTopStart:'inletOff', tTopStop:'exitOn', tBaseStart:'inletOff', tBaseStop:'exitOn',
   mitsu:false, interlock:false,
   tolPulses:3, timerLimit:10.0, timerDebounce:0.3, laneTol:2,
-  rollerWidthMM:2650, beltWidthMM:2650, pairGapMM:100, sensL:20, sensC:52, sensR:82, glassLeftMM:100, sensRef:'glass', gapCross:2, maxGlassW:96, covMargin:1
+  rollerWidthMM:2750, beltWidthMM:2650, pairGapMM:100, sensL:20, sensC:52, sensR:82, glassLeftMM:100, sensRef:'glass', maxGlassW:96, covMargin:1
 };
 /* parameters saved with Save (only the Parameters-tab keys; same type as the factory value) */
 const PARAM_KEY = 'fcsim.params', FACTORY_P = {...P};
 const applyParams = o => { if (o) for (const k in o) if (k in P && typeof o[k]===typeof P[k]) P[k] = o[k]; };
 /* parameters built into the file by Download HTML; a Save in this browser still wins */
-let BAKED_PARAMS = {"vBaseMM":105,"vHighMM":1240,"slowRes":0.3125,"highRes":0.265,"rampS":0,"accelPulses":146,"aTopCtr2":150,"batchLimit":170,"gapLimit":30,"maxSheets":3,"chargeLong":470,"cmdDelayS":0.15,"runUpPulses":100,"runUpBaseS":3,"runUpTopS":1.5,"retardS":1.5,"gsBasis":"slow","siemensEntry":"left","tTopStart":"inletOff","tTopStop":"exitOn","tBaseStart":"inletOff","tBaseStop":"exitOn","mixDrive":"more","tolPulses":3,"timerLimit":10,"timerDebounce":0.3,"laneTol":2,"rollerWidthMM":2650,"glassLeftMM":100,"sensL":20,"sensC":52,"sensR":82,"pairGapMM":100,"gapCross":2,"maxGlassW":96,"covMargin":1}; /*@@BAKED_PARAMS@@*/
+let BAKED_PARAMS = {"vBaseMM":105,"vHighMM":1240,"slowRes":0.3125,"highRes":0.265,"rampS":0,"accelPulses":146,"aTopCtr2":150,"batchLimit":170,"gapLimit":30,"maxSheets":3,"chargeLong":470,"cmdDelayS":0.15,"runUpPulses":100,"runUpBaseS":3,"runUpTopS":1.5,"retardS":1.5,"gsBasis":"slow","siemensEntry":"left","tTopStart":"inletOff","tTopStop":"exitOn","tBaseStart":"inletOff","tBaseStop":"exitOn","mixDrive":"more","tolPulses":3,"timerLimit":10,"timerDebounce":0.3,"laneTol":2,"rollerWidthMM":2750,"glassLeftMM":100,"sensL":20,"sensC":52,"sensR":82,"pairGapMM":100,"gapCross":2,"maxGlassW":96,"covMargin":1}; /*@@BAKED_PARAMS@@*/
 applyParams(BAKED_PARAMS);
 try { applyParams(JSON.parse(localStorage.getItem(PARAM_KEY) || 'null')); } catch(e) {}
 /* every parameter edit is also kept in this browser right away (like the layout); the last Save is still the "saved" reference */
@@ -989,7 +1005,7 @@ const PARAM_UI = [
   ['h','Conveyor speed','motion'],
   ['vBaseMM','Base (mm/s)'],['vHighMM','High (mm/s)'],['rampS','Base ↔ high ramp (s)'],
   ['h','Glass','motion'],
-  ['maxGlassW','Max glass width (in)'],['gapCross','Gap between sheets across (mm)'],
+  ['maxGlassW','Max glass width (in)'],
   ['mixDrive','Glass on belt + chain moves at',[['more','Whichever it touches more'],['room','Belt / INV speed'],['base','Chain speed (base)']]],
   ['h','Encoders','plc'],
   ['slowRes','Slow pulse (mm/p)'],['highRes','High pulse (mm/p)'],
@@ -1008,7 +1024,7 @@ const PARAM_UI = [
   ['h','Mitsubishi layer — only when enabled','plc'],
   ['tolPulses','Length tolerance ± (slow p)'],['timerLimit','Speed-up limit Inlet → Exit (s)'],['timerDebounce','Timer edge OFF-delay (s)'],['laneTol','Lane mismatch allowance (mm)']
 ];
-const PSCALE = { slowRes:IN2MM, highRes:IN2MM, laneTol:IN2MM, gapCross:IN2MM, covMargin:IN2MM };
+const PSCALE = { slowRes:IN2MM, highRes:IN2MM, laneTol:IN2MM, covMargin:IN2MM };
 const pShow = k => PSCALE[k] ? +(P[k]*PSCALE[k]).toFixed(4) : P[k];
 const pTake = (k, raw) => PSCALE[k] && String(raw).trim()!=='' && isFinite(+raw) ? +raw/PSCALE[k] : raw;
 /* sim defaults the line has not confirmed yet → item numbers in info/PLC_online_checklist.csv (MIRROR-Line-Logic.md §0) */
@@ -1030,12 +1046,12 @@ const secOn = sc => (HMI.on || '123').includes(String(SEC.indexOf(sc)+1));
 const hmiFrom = r => ({ name:r.name, len:r.len, on: r.on || coverage(r) });
 function presetToR(i, T=R){
   const pr = PRESETS[i];
-  Object.assign(T,{name:pr.name, w:pr.w, len:pr.len, nAcross:pr.nAcross, nLen:pr.nLen, align:pr.align, on:pr.on, gapX:2, gapY:10, n:0});
+  Object.assign(T,{name:pr.name, w:pr.w, len:pr.len, nAcross:pr.nAcross, nLen:pr.nLen, align:pr.align, on:pr.on, gapX:2, gapA:2, gapY:10, n:0});
 }
 function lateral(r){
   const n = r.nAcross, w = r.w, L0 = glassRef();          // left loading reference
-  // cross gap: nominal, but never wider than what fits in the max glass width (24×4 and 48×2 end up with 0)
-  let gap = n>1 ? Math.max(0, Math.min(P.gapCross, (P.maxGlassW - n*w)/(n-1))) : 0, start = L0;
+  // cross gap is always the set gap (2 in); a batch that does not fit in the max glass width is flagged in sizeChecks, not squeezed
+  let gap = n>1 ? (r.gapA ?? 2) : 0, start = L0;
   if (r.align==='split' && n>1) gap = Math.max(0, (P.maxGlassW - n*w)/(n-1));   // spread over the max glass width
   else if (r.align==='center') start = -(n*w + (n-1)*gap)/2;
   return Array.from({length:n}, (_,c) => [start + c*(w+gap), start + c*(w+gap) + w]);
@@ -1045,20 +1061,20 @@ function coverage(r){
   const hit = y => lanes.some(([a,b]) => a + m <= y && b - m >= y);
   return SEC.map((sc,i) => hit(sensY(sc,'A')) && hit(sensY(sc,'B')) ? String(i+1) : '').join('');   // both sensors of the pair
 }
-const sizeSig = r => [r.w, r.len, r.nAcross, r.nLen, r.align, r.gapX, r.gapY].map(String).join('|');
+const sizeSig = r => [r.w, r.len, r.nAcross, r.nLen, r.align, r.gapX, r.gapA, r.gapY].map(String).join('|');
 const formSize = () => ({ w:+$('#rW').value, len:+$('#rLen').value, nAcross:Math.max(1,Math.round(+$('#rAcross').value)), nLen:Math.max(1,Math.round(+$('#rNLen').value)),
-  align:$('#rAlign').value, gapX:+$('#rGapX').value, gapY:+$('#rGapY').value });
+  align:$('#rAlign').value, gapX:+$('#rGapX').value, gapA:+$('#rGapA').value, gapY:+$('#rGapY').value });
 function rFromForm(){
   R.w=+$('#rW').value; R.len=+$('#rLen').value; R.n=Math.max(0,Math.round(+$('#rN').value));
   R.nAcross=Math.max(1,Math.round(+$('#rAcross').value)); R.nLen=Math.max(1,Math.round(+$('#rNLen').value)); R.align=$('#rAlign').value;
-  R.gapX=+$('#rGapX').value; R.gapY=+$('#rGapY').value;
+  R.gapX=+$('#rGapX').value; R.gapA=+$('#rGapA').value; R.gapY=+$('#rGapY').value;
   const p = $('#preset').value;
   R.name = p==='custom' ? `Custom ${R.w}×${R.len} · ${R.nAcross}×${R.nLen}` : PRESETS[+p].name;
   R.on = p==='custom' ? '' : PRESETS[+p].on;
 }
 function rToForm(T=R){
   $('#rW').value=T.w; $('#rLen').value=T.len; $('#rN').value=T.n; $('#rAcross').value=T.nAcross; $('#rNLen').value=T.nLen;
-  $('#rAlign').value=T.align; $('#rGapX').value=T.gapX; $('#rGapY').value=T.gapY;
+  $('#rAlign').value=T.align; $('#rGapX').value=T.gapX; $('#rGapA').value=T.gapA ?? 2; $('#rGapY').value=T.gapY; batchGapShow();
 }
 const lNet = r => r.nLen*r.len + (r.nLen-1)*r.gapX;
 
@@ -1475,11 +1491,9 @@ function fit(canvas, h){
   if (canvas.width !== Math.round(w*dpr) || canvas.height !== Math.round(h*dpr)){ canvas.width=Math.round(w*dpr); canvas.height=Math.round(h*dpr); canvas.style.height=h+'px'; }
   return {w,h,dpr};
 }
-/* plan views: stretched across the line to fill the box, or true 1:1 scale (box height follows the width) */
-let trueScale = true; try { trueScale = localStorage.getItem('fcsim.trueScale')!=='0'; } catch(e) {}
+/* plan views are always true 1:1 scale (box height follows the width) */
+const trueScale = true;
 const viewH = (W0, x0, x1, pad, fill) => trueScale ? Math.max(150, pad + (2*HWmax()+10)*W0/(x1-x0)) : fill;
-function syncScaleBtn(){ const b = $('#scaleBtn'); b.textContent = trueScale ? '1:1 true scale · click to stretch ↕' : '↕ stretched · click for 1:1'; b.classList.toggle('lit', trueScale);
-  b.title = trueScale ? 'Drawn to scale — click to stretch across the line' : 'Across-line direction is stretched — click for true 1:1 scale'; }
 function draw(){
   const g = G, x0 = g.viewX0, x1 = Math.max(g.exit, g.wallOut, ...g.rollers.map(r=>r.b)) + 12;
   const W0 = cv.clientWidth, Hh = viewH(W0, x0, x1, 90, Math.max(264, Math.min(454, W0*0.40)));
@@ -2041,7 +2055,7 @@ function updateUI(){
     setHTML($('#rChk'), sizeChecks(fs, formOn()).map(i => `<div class="${i.kind}"><b>${i.title}</b>${i.detail}</div>`).join('')); }
 
   { const pv = $('#preset').value, T = {nAcross:+$('#rAcross').value||1, w:+$('#rW').value||0, align:$('#rAlign').value,
-      len:+$('#rLen').value||0, nLen:+$('#rNLen').value||1, gapX:+$('#rGapX').value||0};
+      len:+$('#rLen').value||0, nLen:+$('#rNLen').value||1, gapX:+$('#rGapX').value||0, gapA:+$('#rGapA').value||0};
     const p = predict(T);
     renderKR(T, p);
     const rn = S.jobUntil && S.t < S.jobUntil ? `<b class="warn">Job change → ${R.name}: next load in ${fmtClock(S.jobUntil - S.t)}</b> <button class="sm" id="jobSkip">skip</button>` : '';
@@ -2218,8 +2232,9 @@ function sizeChecks(T, on){
   const n = T.nAcross, lanes = lateral(T), hw = HW(), offL = -hw - lanes[0][0], offR = lanes[n-1][1] - hw;
   if (offL > 0.01 || offR > 0.01)
     add('off', 'bad', 'Glass hangs off the rollers', `${n} × ${T.w} in needs ${mm(lanes[n-1][1] - lanes[0][0])} mm across, the rollers are ${P.rollerWidthMM} mm wide: ${mm(Math.max(offL, offR))} mm over the ${offR >= offL ? 'right' : 'left'} edge.`);
-  if (n*T.w > P.maxGlassW + 1e-6)
-    add('wide', 'wrn', 'Wider than the max glass width', `${n} × ${T.w} in = ${n*T.w} in > ${P.maxGlassW} in, so the sheets are placed with no gap between them.`);
+  const gA = T.gapA ?? 2, wAll = n*T.w + (n-1)*gA;
+  if (wAll > P.maxGlassW + 1e-6)
+    add('wide', 'bad', 'Wider than the max glass width', `${n} × ${T.w} in + ${n-1} gap × ${gA} in = ${+wAll.toFixed(2)} in > ${P.maxGlassW} in. Use fewer across (max ${Math.max(1, Math.floor((P.maxGlassW + gA)/(T.w + gA)))}).`);
   const span = lNet(T), sp = Math.round(span/P.slowRes), margin = Math.floor(P.chargeLong - span/P.slowRes);
   if (margin < 0) add('long', 'bad', 'Load too long: Charge Too Long', `${T.nLen} × ${T.len} in in flow = ${mm(span)} mm ≈ ${sp} slow p > ${P.chargeLong} p. The PLC stops the line on this load.`);
   else if (margin < 40) add('long', 'wrn', 'Close to Charge Too Long', `Load ≈ ${sp} slow p, limit ${P.chargeLong} p: only ${margin} p margin.`);
@@ -2290,9 +2305,14 @@ function markUnsaved(){
     el.classList.toggle('unsv', !b || ne(r[el.dataset.k], b[el.dataset.k])); });
   document.querySelectorAll('#laySens [data-s]').forEach(el => { const b = B.sensors[el.dataset.s], f = el.dataset.f;
     el.classList.toggle('unsv', !b || ne(L.sensors[el.dataset.s][f], b[f])); });
-  if (!SAVED_P) return;
-  document.querySelectorAll('.pgroups [data-p], #layWidth [data-pp]').forEach(el => { const k = el.dataset.p || el.dataset.pp;
+  if (SAVED_P) document.querySelectorAll('.pgroups [data-p], #layWidth [data-pp]').forEach(el => { const k = el.dataset.p || el.dataset.pp;
     el.classList.toggle('unsv', k in SAVED_P && ne(P[k], SAVED_P[k])); });
+  markTabs();
+}
+/* a settings tab turns yellow (dot) while any value inside it differs from the last Save */
+function markTabs(){
+  document.querySelectorAll('.stabs [data-cnt]').forEach(c => { const t = c.closest('[data-tab]'), p = $(`#panel-${c.dataset.cnt}`);
+    t.classList.toggle('unsv', !!p.querySelector('.unsv')); t.title = t.classList.contains('unsv') ? 'Has changes not saved yet' : ''; });
 }
 function defaultNext(r){ return r.type==='belt' ? 120 : ((+r.pitch||0) > 0 ? +r.pitch : (+r.dia||0) + 60); }
 /* allowed range per layout field (mm, qty in pcs); "next" may go negative — the overlap shows red */
@@ -2389,13 +2409,13 @@ $('#layLoadDef').addEventListener('click', () => {
   defNote(d ? 'Reset to the saved default (both rooms + parameters).' : 'No saved default yet — drawing and factory values loaded.'); });
 /* HMI size panel: the form as typed (preset, size, loads, gaps, job change) + the size the line is running (confirmed) */
 const hmiObj = () => ({ preset:$('#preset').value, ...formSize(), n:Math.max(0,Math.round(+$('#rN').value||0)), job:+$('#rJob').value||0,
-  running:{ name:R.name, w:R.w, len:R.len, n:R.n, nAcross:R.nAcross, nLen:R.nLen, align:R.align, gapX:R.gapX, gapY:R.gapY, on:R.on } });
+  running:{ name:R.name, w:R.w, len:R.len, n:R.n, nAcross:R.nAcross, nLen:R.nLen, align:R.align, gapX:R.gapX, gapA:R.gapA, gapY:R.gapY, on:R.on } });
 function applyHmi(h){
   if (!h) return;
   if (h.running){ Object.assign(R, h.running); HMI = hmiFrom(R); }   // the running size comes back without a job change
   const ok = h.preset!=='custom' && PRESETS[+h.preset];
   $('#preset').value = ok ? String(h.preset) : 'custom';
-  rToForm({ w:h.w, len:h.len, n:h.n ?? R.n, nAcross:h.nAcross, nLen:h.nLen, align:h.align, gapX:h.gapX, gapY:h.gapY });
+  rToForm({ w:h.w, len:h.len, n:h.n ?? R.n, nAcross:h.nAcross, nLen:h.nLen, align:h.align, gapX:h.gapX, gapA:h.gapA, gapY:h.gapY });
   if (h.job != null) $('#rJob').value = h.job;
 }
 /* Export JSON = download a file named with the date & time; Import JSON = pick such a file */
@@ -2468,7 +2488,7 @@ function setParam(k, raw){
 function markParams(){
   const diff = new Set(paramDiff());
   document.querySelectorAll('.pgroups [data-p]').forEach(el => el.closest('.prow').classList.toggle('chg', diff.has(el.dataset.p)));
-  document.querySelectorAll('.stabs [data-cnt]').forEach(c => { const n = $(`#panel-${c.dataset.cnt}`).querySelectorAll('.prow.chg').length; c.textContent = n ? ` · ${n} changed` : ''; });
+  document.querySelectorAll('.stabs [data-cnt]').forEach(c => { const n = $(`#panel-${c.dataset.cnt}`).querySelectorAll('.prow.chg').length; c.textContent = n ? `${n} changed` : ''; });
   markUnsaved();
 }
 function paramsChanged(){ updateSECY(); G = geom(); if (typeof buildLayoutEditor==='function' && $('#layWidth')) buildLayoutEditor(); $('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1); markParams(); setDirty(true);
@@ -2483,6 +2503,9 @@ const DEF = PRESETS.findIndex(p=>p.name==='S 84×120');   // most-produced size 
 $('#preset').value = String(DEF); presetToR(DEF); rToForm(); HMI = hmiFrom(R);
 $('#preset').addEventListener('change', e => { if (e.target.value!=='custom'){ const T={}; presetToR(+e.target.value, T); rToForm(T); } });
 ['#rW','#rLen','#rNLen','#rAcross','#rAlign'].forEach(id => $(id).addEventListener('input', () => { $('#preset').value='custom'; }));
+/* the two batch gaps only show when the size is a batch (more than one sheet across or in flow) */
+function batchGapShow(){ const b = (+$('#rAcross').value||1) > 1 || (+$('#rNLen').value||1) > 1; document.querySelectorAll('.bgap').forEach(e => e.hidden = !b); }
+['#rAcross','#rNLen'].forEach(id => $(id).addEventListener('input', batchGapShow));
 $('#rN').addEventListener('input', e => { R.n = Math.max(0, Math.round(+e.target.value||0)); });   // load count applies directly
 $('#confirmBtn').addEventListener('click', () => {
   if (sizeSig(formSize()) === sizeSig(R)) return;
@@ -2499,14 +2522,14 @@ $('#cancelBtn').addEventListener('click', () => {   // back to the running size,
   $('#preset').value = i < 0 ? 'custom' : String(i); rToForm(); sizeAlerts();
 });
 /* size problems pop when a field is committed (change, not every keystroke) */
-['#preset','#rW','#rLen','#rNLen','#rAcross','#rAlign','#rGapX'].forEach(id => $(id).addEventListener('change', () => sizeAlerts()));
+['#preset','#rW','#rLen','#rNLen','#rAcross','#rAlign','#rGapX','#rGapA'].forEach(id => $(id).addEventListener('change', () => sizeAlerts()));
 $('#rNote').addEventListener('click', e => { if (e.target.id==='jobSkip'){ S.jobUntil = S.t; } });
 
 /* settings page */
 $('#pvPreset').innerHTML = $('#preset').innerHTML;
 function pvFromHmi(){
   $('#pvPreset').value = $('#preset').value; const f = formSize();
-  PVT = { w:f.w, len:f.len, nAcross:f.nAcross, nLen:f.nLen, align:f.align, gapX:f.gapX };
+  PVT = { w:f.w, len:f.len, nAcross:f.nAcross, nLen:f.nLen, align:f.align, gapX:f.gapX, gapA:f.gapA };
 }
 let pvInit = false;
 /* pages: 'sim' (default), 'settings', 'master' — one body class each */
@@ -2596,9 +2619,9 @@ const MT_COLS = [
   {k:null, h:'', u:'', v:'*', g:'act', td:r => `<button class="sm" data-hmi="${r.i}" title="Load this size into the HMI panel">→ HMI</button>`}
 ];
 function masterRows(){
-  const gx = +$('#rGapX').value||0, gy = +$('#rGapY').value||0;
+  const gx = +$('#rGapX').value||0, ga = +$('#rGapA').value||0, gy = +$('#rGapY').value||0;
   return PRESETS.map((pr,i) => {
-    const T = {}; presetToR(i, T); T.gapX = gx; T.gapY = gy;
+    const T = {}; presetToR(i, T); T.gapX = gx; T.gapA = ga; T.gapY = gy;
     const p = predict(T), got = coverage(T), span = lNet(T);
     const area = T.nAcross*T.nLen*T.w*T.len*0.00064516, cycle = (span + gy)/G.vB;
     const d = { i, name:pr.name, grp:pr.grp, tag:pr.tag||'', on:pr.on, covOK:[...pr.on].every(c=>got.includes(c)), n:T.nAcross*T.nLen,
@@ -2718,8 +2741,8 @@ $('#mtCsv').addEventListener('click', () => {
   a.download = `flow-coater-master-${room}.csv`; document.body.appendChild(a); a.click(); a.remove();
 });
 $('#pvPreset').addEventListener('change', e => {   // Custom… = the size typed in the HMI panel
-  if (e.target.value==='custom'){ const f = formSize(); PVT = { w:f.w, len:f.len, nAcross:f.nAcross, nLen:f.nLen, align:f.align, gapX:f.gapX }; }
-  else { const T = {}; presetToR(+e.target.value, T); PVT = { w:T.w, len:T.len, nAcross:T.nAcross, nLen:T.nLen, align:T.align, gapX:T.gapX }; }
+  if (e.target.value==='custom'){ const f = formSize(); PVT = { w:f.w, len:f.len, nAcross:f.nAcross, nLen:f.nLen, align:f.align, gapX:f.gapX, gapA:f.gapA }; }
+  else { const T = {}; presetToR(+e.target.value, T); PVT = { w:T.w, len:T.len, nAcross:T.nAcross, nLen:T.nLen, align:T.align, gapX:T.gapX, gapA:T.gapA }; }
   pvSetPos(pvFront); });
 const ICON = {
   pause:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1"/><rect x="14" y="4.5" width="4.5" height="15" rx="1"/></svg>',
@@ -2803,8 +2826,6 @@ buildSensorGrid(); buildParams(); readColors(); setRoom('top'); UNDO.cur = histS
 $('#hover').className = 'dim'; $('#hover').textContent = 'Move the mouse over the drawing to read positions';
 try { if (localStorage.getItem('fcsim.keysHide')!=='1') showKeys(); } catch(e) { showKeys(); }
 $('#thickX').textContent = (P.vHighMM/P.vBaseMM).toFixed(1);
-syncScaleBtn();
-$('#scaleBtn').addEventListener('click', () => { trueScale = !trueScale; try { localStorage.setItem('fcsim.trueScale', trueScale ? '1' : '0'); } catch(e) {} syncScaleBtn(); });
 let lastT = performance.now(), lastUI = 0;
 function frame(now){
   const rdt = Math.min(0.1, (now-lastT)/1000); lastT = now;
@@ -2943,4 +2964,4 @@ window.__sim = { PRESETS, coverage, lateral, step, get S(){return S}, P, R, pred
 </script>
 
 
-</body></html>
+</body></html>
